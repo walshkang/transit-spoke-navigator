@@ -7,6 +7,12 @@ import { SearchResult, LocationError } from "@/types/location";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -41,14 +47,14 @@ const Index = () => {
     setIsLoading(true);
     try {
       // Initialize Google Places service
-      const service = new google.maps.places.PlacesService(
+      const service = new window.google.maps.places.PlacesService(
         document.createElement("div")
       );
 
-      const request = {
+      const request: google.maps.places.TextSearchRequest = {
         query,
         location: currentLocation
-          ? new google.maps.LatLng(
+          ? new window.google.maps.LatLng(
               currentLocation.latitude,
               currentLocation.longitude
             )
@@ -57,7 +63,7 @@ const Index = () => {
       };
 
       service.textSearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
           const formattedResults: SearchResult[] = results.map((result) => ({
             id: result.place_id || Math.random().toString(),
             name: result.name || "",
