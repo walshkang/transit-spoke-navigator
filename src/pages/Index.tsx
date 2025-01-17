@@ -46,6 +46,11 @@ const Index = () => {
 
     setIsLoading(true);
     try {
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        throw new Error("Google Maps API key is not configured");
+      }
+
       // Initialize Google Places service
       const service = new window.google.maps.places.PlacesService(
         document.createElement("div")
@@ -83,6 +88,7 @@ const Index = () => {
           }));
           setResults(formattedResults);
         } else {
+          console.error("Places API error:", status);
           toast({
             title: "Error",
             description: "Failed to fetch search results",
@@ -92,6 +98,7 @@ const Index = () => {
         setIsLoading(false);
       });
     } catch (error) {
+      console.error("Search error:", error);
       toast({
         title: "Error",
         description: "An error occurred while searching",
