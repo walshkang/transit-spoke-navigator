@@ -157,6 +157,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     selectedResult,
     calculateRoutes,
     setSelectedResult,
-    setRoutes
+    setRoutes,
+    results: routes,
+    isLoading: isCalculatingRoute
   };
 };
