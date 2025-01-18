@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import SearchBar from "@/components/SearchBar";
 import ErrorAlert from "@/components/ErrorAlert";
+import RouteCard from "@/components/RouteCard";
 import { getCurrentPosition } from "@/utils/location";
 import { calculateDistance } from "@/utils/location";
 import { SearchResult, LocationError } from "@/types/location";
@@ -13,12 +14,21 @@ declare global {
   }
 }
 
+interface Route {
+  duration: number;
+  bikeMinutes: number;
+  subwayMinutes: number;
+}
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [currentLocation, setCurrentLocation] = useState<GeolocationCoordinates | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<LocationError | null>(null);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,6 +47,94 @@ const Index = () => {
     }
   };
 
+  const calculateRoutes = async (destination: SearchResult) => {
+    if (!currentLocation) {
+      toast({
+        title: "Error",
+        description: "Current location is not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCalculatingRoute(true);
+    
+    try {
+      const directionsService = new window.google.maps.DirectionsService();
+      
+      // Calculate transit route
+      const transitRequest = {
+        origin: new window.google.maps.LatLng(
+          currentLocation.latitude,
+          currentLocation.longitude
+        ),
+        destination: new window.google.maps.LatLng(
+          destination.location.lat,
+          destination.location.lng
+        ),
+        travelMode: window.google.maps.TravelMode.TRANSIT,
+      };
+
+      // Calculate cycling route
+      const cyclingRequest = {
+        origin: new window.google.maps.LatLng(
+          currentLocation.latitude,
+          currentLocation.longitude
+        ),
+        destination: new window.google.maps.LatLng(
+          destination.location.lat,
+          destination.location.lng
+        ),
+        travelMode: window.google.maps.TravelMode.BICYCLING,
+      };
+
+      const [transitResponse, cyclingResponse] = await Promise.all([
+        new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+          directionsService.route(transitRequest, (result, status) => {
+            if (status === window.google.maps.DirectionsStatus.OK) {
+              resolve(result);
+            } else {
+              reject(status);
+            }
+          });
+        }),
+        new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+          directionsService.route(cyclingRequest, (result, status) => {
+            if (status === window.google.maps.DirectionsStatus.OK) {
+              resolve(result);
+            } else {
+              reject(status);
+            }
+          });
+        }),
+      ]);
+
+      const route: Route = {
+        duration: Math.round(
+          (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
+        ),
+        bikeMinutes: Math.round(
+          (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
+        ),
+        subwayMinutes: Math.round(
+          (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
+        ),
+      };
+
+      setRoutes([route]);
+      setSelectedResult(destination);
+      setIsCalculatingRoute(false);
+    } catch (error) {
+      console.error("Route calculation error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to calculate routes",
+        variant: "destructive",
+      });
+      setIsCalculatingRoute(false);
+    }
+  };
+
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.length < 3) {
@@ -48,18 +146,15 @@ const Index = () => {
     try {
       console.log("Starting search with query:", query);
       
-      // Create a map div for the Places service
       const mapDiv = document.createElement('div');
       mapDiv.style.display = 'none';
       document.body.appendChild(mapDiv);
       
-      // Initialize a map instance (required for Places service)
       const map = new window.google.maps.Map(mapDiv, {
         center: { lat: 0, lng: 0 },
         zoom: 1
       });
 
-      // Initialize Places service with the map
       const service = new window.google.maps.places.PlacesService(map);
       console.log("Places service initialized");
 
@@ -103,7 +198,6 @@ const Index = () => {
           setResults(formattedResults);
           setIsLoading(false);
           
-          // Clean up the map div
           document.body.removeChild(mapDiv);
         } else {
           console.error("Places API error:", status);
@@ -140,9 +234,28 @@ const Index = () => {
           onChange={handleSearch}
         />
 
-        {isLoading ? (
+        {isLoading || isCalculatingRoute ? (
           <div className="flex justify-center mt-8">
             <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          </div>
+        ) : selectedResult && routes.length > 0 ? (
+          <div className="mt-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-gray-900">Routes to {selectedResult.name}</h2>
+              <p className="text-sm text-gray-500">{selectedResult.address}</p>
+            </div>
+            {routes.map((route, index) => (
+              <RouteCard
+                key={index}
+                duration={route.duration}
+                bikeMinutes={route.bikeMinutes}
+                subwayMinutes={route.subwayMinutes}
+                onClick={() => {
+                  // Handle route selection
+                  console.log("Selected route:", route);
+                }}
+              />
+            ))}
           </div>
         ) : (
           <div className="mt-6 space-y-4">
@@ -150,9 +263,7 @@ const Index = () => {
               <div
                 key={result.id}
                 className="bg-white rounded-lg shadow-sm p-4 space-y-2 cursor-pointer hover:bg-gray-50"
-                onClick={() => {
-                  console.log("Selected result:", result);
-                }}
+                onClick={() => calculateRoutes(result)}
               >
                 <h3 className="font-medium text-gray-900">{result.name}</h3>
                 <p className="text-gray-500 text-sm">{result.address}</p>
