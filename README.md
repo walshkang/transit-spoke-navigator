@@ -1,69 +1,110 @@
-# Welcome to your Lovable project
+# Bike to Subway Navigator
 
-## Project info
+## Overview
 
-**URL**: https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657
+Bike to Subway Navigator is a web application designed to optimize urban commutes by combining bike-sharing services with subway transportation. This tool calculates time-saving routes by replacing walking segments with Citi Bike rides, providing users with efficient navigation from their current location to their desired destination.
 
-## How can I edit this code?
+## Current Status
 
-There are several ways of editing your application.
+The project is in active development with several core features implemented:
 
-**Use Lovable**
+- Web application built using ReactJS and TailwindCSS
+- Supabase backend integration
+- Google Maps API integration for routing and navigation
+- User interface for location input and route display
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) and start prompting.
+### Implemented Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- [x] Google Maps integration
+- [x] User location detection
+- [x] Destination search functionality
+- [x] Basic route calculation
 
-**Use your preferred IDE**
+### In Progress
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- [ ] Enhanced routing tab
+- [ ] Directions display on map
+- [ ] Citi Bike station integration
+- [ ] Time-saving calculations
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Technical Stack
 
-Follow these steps:
+- Frontend: ReactJS, TypeScript
+- Styling: TailwindCSS, shadcn-ui
+- Backend: Supabase
+- Build Tool: Vite
+- Maps and Routing: Google Maps APIs
+- Bike-sharing Data: Citi Bike APIs
+- Code Assistance: Lovable, Bolt, Copilot, Perplexity
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Key Features
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Real-time Bike Availability**: Utilizes Citi Bike APIs to fetch live data on bike availability at nearby stations.
+2. **Intelligent Routing**: Combines walking, biking, and subway options to create optimal routes.
+3. **Time-saving Calculations**: Estimates time saved by replacing walking segments with Citi Bike rides.
+4. **Interactive Map Interface**: Displays routes and bike stations on an interactive Google Map.
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Setup and Development
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Requirements
+
+- Node.js (v14+)
+- Google Maps API key with access to:
+  - Directions API
+  - Places API
+  - Maps JavaScript API
+- Citi Bike API access
+
+### Installation
+
+```bash
+# Clone the repository
+git clone [repository-url]
+
+# Navigate to the project directory
+cd bike-to-subway-navigator
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Development Options
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Use Lovable**: Visit the [Lovable Project](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) to start prompting. Changes made via Lovable are automatically committed to the repo.
 
-**Use GitHub Codespaces**
+2. **Use your preferred IDE**: Clone the repo and push changes. Pushed changes will be reflected in Lovable.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. **Edit directly in GitHub**: Navigate to files, click "Edit", make changes, and commit.
 
-## What technologies are used for this project?
+4. **Use GitHub Codespaces**: Launch a new Codespace environment from the repository's main page.
 
-This project is built with .
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+For quick deployment, open [Lovable](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) and click on Share -> Publish.
 
-## How can I deploy this project?
+TBD on custom domain.
 
-Simply open [Lovable](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) and click on Share -> Publish.
+## Next Steps
 
-## I want to use a custom domain - is that possible?
+1. Implement the enhanced routing tab
+2. Integrate Citi Bike station data into the routing algorithm
+3. Develop time-saving calculation logic
+4. Improve map visualization of routes and bike stations
+5. Implement user authentication and route saving features
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+## License
+
+[MIT License] see /transit-spoke-navigator/LICENSE.TXT
+
+## Contact
+
+walsh kang
+wkang1281@gmail.com
