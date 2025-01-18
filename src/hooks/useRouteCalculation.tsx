@@ -6,6 +6,7 @@ interface Route {
   duration: number;
   bikeMinutes: number;
   subwayMinutes: number;
+  transitStartLocation?: google.maps.LatLng;
 }
 
 export const useRouteCalculation = (currentLocation: GeolocationCoordinates | null) => {
@@ -75,6 +76,16 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         }),
       ]);
 
+      // Find the first transit step in the route
+      let transitStartLocation: google.maps.LatLng | undefined;
+      const steps = transitResponse.routes[0].legs[0].steps;
+      for (const step of steps) {
+        if (step.travel_mode === 'TRANSIT') {
+          transitStartLocation = step.start_location;
+          break;
+        }
+      }
+
       const route: Route = {
         duration: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
@@ -85,6 +96,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         subwayMinutes: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
         ),
+        transitStartLocation
       };
 
       setRoutes([route]);

@@ -3,6 +3,7 @@ import SearchBar from "@/components/SearchBar";
 import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
+import RouteDetailsView from "@/components/RouteDetailsView";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
@@ -12,6 +13,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentLocation, setCurrentLocation] = useState<GeolocationCoordinates | null>(null);
   const [error, setError] = useState<LocationError | null>(null);
+  const [isRouteDetailsOpen, setIsRouteDetailsOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<any>(null);
 
   const { 
     results, 
@@ -48,7 +51,8 @@ const Index = () => {
   };
 
   const handleRouteSelect = (route: any) => {
-    console.log("Selected route:", route);
+    setSelectedRoute(route);
+    setIsRouteDetailsOpen(true);
   };
 
   return (
@@ -85,6 +89,14 @@ const Index = () => {
           message={error?.message || "An error occurred"}
           onClose={() => setError(null)}
         />
+
+        {selectedRoute && (
+          <RouteDetailsView
+            isOpen={isRouteDetailsOpen}
+            onClose={() => setIsRouteDetailsOpen(false)}
+            originalRoute={selectedRoute}
+          />
+        )}
       </div>
     </div>
   );
