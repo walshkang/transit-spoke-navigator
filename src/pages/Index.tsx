@@ -46,15 +46,22 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        throw new Error("Google Maps API key is not configured");
-      }
+      console.log("Starting search with query:", query);
+      
+      // Create a map div for the Places service
+      const mapDiv = document.createElement('div');
+      mapDiv.style.display = 'none';
+      document.body.appendChild(mapDiv);
+      
+      // Initialize a map instance (required for Places service)
+      const map = new window.google.maps.Map(mapDiv, {
+        center: { lat: 0, lng: 0 },
+        zoom: 1
+      });
 
-      // Initialize Google Places service
-      const service = new window.google.maps.places.PlacesService(
-        document.createElement("div")
-      );
+      // Initialize Places service with the map
+      const service = new window.google.maps.places.PlacesService(map);
+      console.log("Places service initialized");
 
       const request: google.maps.places.TextSearchRequest = {
         query,
@@ -67,7 +74,12 @@ const Index = () => {
         radius: 50000, // 50km radius
       };
 
+      console.log("Search request:", request);
+
       service.textSearch(request, (results, status) => {
+        console.log("Places API response status:", status);
+        console.log("Raw results:", results);
+
         if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
           const formattedResults: SearchResult[] = results.map((result) => ({
             id: result.place_id || Math.random().toString(),
@@ -86,7 +98,13 @@ const Index = () => {
                 )
               : undefined,
           }));
+          
+          console.log("Formatted results:", formattedResults);
           setResults(formattedResults);
+          setIsLoading(false);
+          
+          // Clean up the map div
+          document.body.removeChild(mapDiv);
         } else {
           console.error("Places API error:", status);
           toast({
@@ -94,8 +112,9 @@ const Index = () => {
             description: "Failed to fetch search results",
             variant: "destructive",
           });
+          setIsLoading(false);
+          document.body.removeChild(mapDiv);
         }
-        setIsLoading(false);
       });
     } catch (error) {
       console.error("Search error:", error);
@@ -132,8 +151,7 @@ const Index = () => {
                 key={result.id}
                 className="bg-white rounded-lg shadow-sm p-4 space-y-2 cursor-pointer hover:bg-gray-50"
                 onClick={() => {
-                  // Handle navigation to route calculation
-                  console.log("Navigate to route calculation for:", result);
+                  console.log("Selected result:", result);
                 }}
               >
                 <h3 className="font-medium text-gray-900">{result.name}</h3>
