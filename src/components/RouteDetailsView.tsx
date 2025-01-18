@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Clock } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 interface RouteDetailsViewProps {
   isOpen: boolean;
@@ -16,13 +16,41 @@ interface RouteDetailsViewProps {
 
 const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewProps) => {
   const [activeTab, setActiveTab] = useState("original");
+  const originalMapRef = useRef<HTMLDivElement>(null);
+  const enhancedMapRef = useRef<HTMLDivElement>(null);
+  const [originalMap, setOriginalMap] = useState<google.maps.Map | null>(null);
+  const [enhancedMap, setEnhancedMap] = useState<google.maps.Map | null>(null);
 
   const enhancedDuration = originalRoute.bikeMinutes + 
     (originalRoute.subwayMinutes - (originalRoute?.transitStartLocation ? 5 : 0));
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Initialize maps when sheet is opened
+    if (originalMapRef.current && !originalMap) {
+      const map = new google.maps.Map(originalMapRef.current, {
+        zoom: 12,
+        center: { lat: 40.7128, lng: -74.0060 }, // NYC default center
+        mapTypeControl: false,
+      });
+      setOriginalMap(map);
+    }
+
+    if (enhancedMapRef.current && !enhancedMap) {
+      const map = new google.maps.Map(enhancedMapRef.current, {
+        zoom: 12,
+        center: { lat: 40.7128, lng: -74.0060 }, // NYC default center
+        mapTypeControl: false,
+      });
+      setEnhancedMap(map);
+    }
+  }, [isOpen]);
+
   return (
     <Sheet open={isOpen} onOpenChange={() => onClose()}>
       <SheetContent className="w-full sm:max-w-xl">
+        <SheetTitle className="text-lg font-semibold mb-4">Route Details</SheetTitle>
         <div className="h-full flex flex-col">
           <Tabs defaultValue="original" className="flex-1">
             <TabsList className="grid w-full grid-cols-2">
@@ -31,10 +59,10 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
             </TabsList>
             
             <TabsContent value="original" className="flex-1">
-              <div className="h-[calc(100vh-200px)] bg-gray-100 rounded-md mb-4">
-                {/* Map will go here */}
-                <div className="p-4 text-center">Map View Coming Soon</div>
-              </div>
+              <div 
+                ref={originalMapRef}
+                className="h-[calc(100vh-200px)] bg-gray-100 rounded-md mb-4"
+              />
               <div className="flex items-center justify-center space-x-2 p-4 border-t">
                 <Clock className="h-5 w-5 text-gray-500" />
                 <span className="text-lg font-medium">
@@ -44,10 +72,10 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
             </TabsContent>
             
             <TabsContent value="enhanced" className="flex-1">
-              <div className="h-[calc(100vh-200px)] bg-gray-100 rounded-md mb-4">
-                {/* Enhanced route map will go here */}
-                <div className="p-4 text-center">Enhanced Map View Coming Soon</div>
-              </div>
+              <div 
+                ref={enhancedMapRef}
+                className="h-[calc(100vh-200px)] bg-gray-100 rounded-md mb-4"
+              />
               <div className="flex items-center justify-center space-x-2 p-4 border-t">
                 <Clock className="h-5 w-5 text-gray-500" />
                 <span className="text-lg font-medium">
