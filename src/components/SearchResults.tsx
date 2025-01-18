@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { SearchResult } from "@/types/location";
 
 interface SearchResultsProps {
