@@ -65,18 +65,20 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     
     try {
       const directionsService = new window.google.maps.DirectionsService();
-      
-      // Get initial transit route
+      const origin = new window.google.maps.LatLng(
+        currentLocation.latitude,
+        currentLocation.longitude
+      );
+      const destinationLatLng = new window.google.maps.LatLng(
+        destination.location.lat,
+        destination.location.lng
+      );
+
+      // Get initial transit route from user's location
       const transitResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
         directionsService.route({
-          origin: new window.google.maps.LatLng(
-            currentLocation.latitude,
-            currentLocation.longitude
-          ),
-          destination: new window.google.maps.LatLng(
-            destination.location.lat,
-            destination.location.lng
-          ),
+          origin,
+          destination: destinationLatLng,
           travelMode: window.google.maps.TravelMode.TRANSIT,
         }, (result, status) => {
           if (status === window.google.maps.DirectionsStatus.OK && result) {
@@ -107,10 +109,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           // Calculate cycling route to transit start
           const cyclingResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
             directionsService.route({
-              origin: new window.google.maps.LatLng(
-                currentLocation.latitude,
-                currentLocation.longitude
-              ),
+              origin,
               destination: transitStartLocation,
               travelMode: window.google.maps.TravelMode.BICYCLING,
             }, (result, status) => {
@@ -126,10 +125,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           const remainingTransitResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
             directionsService.route({
               origin: transitStartLocation,
-              destination: new window.google.maps.LatLng(
-                destination.location.lat,
-                destination.location.lng
-              ),
+              destination: destinationLatLng,
               travelMode: window.google.maps.TravelMode.TRANSIT,
             }, (result, status) => {
               if (status === window.google.maps.DirectionsStatus.OK && result) {
@@ -158,30 +154,29 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               cycling: cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep)
             }
           };
-
-          console.log('Enhanced route calculated:', enhancedRoute);
         }
       }
 
-      // Set either enhanced or original route
+      // Create original route (always from user's location)
+      const originalRoute: Route = {
+        duration: Math.round(
+          (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
+        ),
+        bikeMinutes: 0,
+        subwayMinutes: Math.round(
+          (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
+        ),
+        directions: {
+          transit: transitSteps.map(formatDirectionStep),
+          cycling: []
+        }
+      };
+
+      // Set routes (either both enhanced and original, or just original)
       if (enhancedRoute) {
-        setRoutes([enhancedRoute]);
+        setRoutes([originalRoute, enhancedRoute]);
       } else {
-        // Use original transit route
-        const route: Route = {
-          duration: Math.round(
-            (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
-          ),
-          bikeMinutes: 0,
-          subwayMinutes: Math.round(
-            (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
-          ),
-          directions: {
-            transit: transitSteps.map(formatDirectionStep),
-            cycling: []
-          }
-        };
-        setRoutes([route]);
+        setRoutes([originalRoute]);
       }
 
       setIsCalculatingRoute(false);
