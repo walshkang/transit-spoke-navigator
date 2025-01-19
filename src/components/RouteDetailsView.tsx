@@ -53,13 +53,13 @@ const getTravelModeIcon = (mode: string) => {
 
 // RouteDetailsView component
 const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewProps) => {
-  const [activeTab, setActiveTab] = useState("original");
-  const [showOriginalMap, setShowOriginalMap] = useState(false);
-  const [showEnhancedMap, setShowEnhancedMap] = useState(false);
-  const originalMapRef = useRef<HTMLDivElement>(null);
-  const enhancedMapRef = useRef<HTMLDivElement>(null);
-  const [originalMap, setOriginalMap] = useState<google.maps.Map | null>(null);
-  const [enhancedMap, setEnhancedMap] = useState<google.maps.Map | null>(null);
+  const [activeTab, setActiveTab] = useState("biking");
+  const [showBikingMap, setShowBikingMap] = useState(false);
+  const [showTransitMap, setShowTransitMap] = useState(false);
+  const bikingMapRef = useRef<HTMLDivElement>(null);
+  const transitMapRef = useRef<HTMLDivElement>(null);
+  const [bikingMap, setBikingMap] = useState<google.maps.Map | null>(null);
+  const [transitMap, setTransitMap] = useState<google.maps.Map | null>(null);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [enhancedRenderer, setEnhancedRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
 
@@ -72,16 +72,16 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
     if (!isOpen) {
       if (directionsRenderer) directionsRenderer.setMap(null);
       if (enhancedRenderer) enhancedRenderer.setMap(null);
-      setOriginalMap(null);
-      setEnhancedMap(null);
-      setShowOriginalMap(false);
-      setShowEnhancedMap(false);
+      setBikingMap(null);
+      setTransitMap(null);
+      setShowBikingMap(false);
+      setShowTransitMap(false);
     }
   }, [isOpen]);
 
   // Effect to initialize maps when shown
   useEffect(() => {
-    if (!isOpen || !originalRoute || !window.google || (!showOriginalMap && !showEnhancedMap)) return;
+    if (!isOpen || !originalRoute || !window.google || (!showBikingMap && !showTransitMap)) return;
 
     const initMap = (ref: HTMLDivElement) => {
       return new window.google.maps.Map(ref, {
@@ -93,10 +93,10 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       });
     };
 
-    // Initialize original map
-    if (showOriginalMap && originalMapRef.current && !originalMap) {
-      const map = initMap(originalMapRef.current);
-      setOriginalMap(map);
+    // Initialize biking map
+    if (showBikingMap && bikingMapRef.current && !bikingMap) {
+      const map = initMap(bikingMapRef.current);
+      setBikingMap(map);
 
       const renderer = new window.google.maps.DirectionsRenderer({
         map: map,
@@ -106,10 +106,10 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       setDirectionsRenderer(renderer);
     }
 
-    // Initialize enhanced map
-    if (showEnhancedMap && enhancedMapRef.current && !enhancedMap) {
-      const map = initMap(enhancedMapRef.current);
-      setEnhancedMap(map);
+    // Initialize transit map
+    if (showTransitMap && transitMapRef.current && !transitMap) {
+      const map = initMap(transitMapRef.current);
+      setTransitMap(map);
 
       const renderer = new window.google.maps.DirectionsRenderer({
         map: map,
@@ -118,7 +118,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       });
       setEnhancedRenderer(renderer);
     }
-  }, [isOpen, showOriginalMap, showEnhancedMap]);
+  }, [isOpen, showBikingMap, showTransitMap]);
 
   // Effect to draw routes on the maps
   useEffect(() => {
@@ -126,8 +126,35 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
 
     const directionsService = new window.google.maps.DirectionsService();
 
-    // Draw original route
-    if (showOriginalMap && originalMap && directionsRenderer && originalRoute.directions.transit.length > 0) {
+    // Draw biking route
+    if (showBikingMap && bikingMap && directionsRenderer && originalRoute.directions.cycling.length > 0) {
+      const cyclingSteps = originalRoute.directions.cycling;
+      const origin = cyclingSteps[0].start_location;
+
+      if (origin) {
+        directionsService.route(
+          {
+            origin: origin,
+            destination: originalRoute.transitStartLocation,
+            travelMode: google.maps.TravelMode.BICYCLING,
+          },
+          (result, status) => {
+            if (status === 'OK' && result) {
+              directionsRenderer.setDirections(result);
+              const bounds = new window.google.maps.LatLngBounds();
+              result.routes[0].legs[0].steps.forEach(step => {
+                bounds.extend(step.start_location);
+                bounds.extend(step.end_location);
+              });
+              bikingMap.fitBounds(bounds);
+            }
+          }
+        );
+      }
+    }
+
+    // Draw transit route
+    if (showTransitMap && transitMap && enhancedRenderer && originalRoute.directions.transit.length > 0) {
       const transitSteps = originalRoute.directions.transit;
       const origin = transitSteps[0].start_location;
       const destination = transitSteps[transitSteps.length - 1].end_location;
@@ -141,46 +168,19 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
           },
           (result, status) => {
             if (status === 'OK' && result) {
-              directionsRenderer.setDirections(result);
-              const bounds = new window.google.maps.LatLngBounds();
-              result.routes[0].legs[0].steps.forEach(step => {
-                bounds.extend(step.start_location);
-                bounds.extend(step.end_location);
-              });
-              originalMap.fitBounds(bounds);
-            }
-          }
-        );
-      }
-    }
-
-    // Draw enhanced route (cycling portion)
-    if (showEnhancedMap && enhancedMap && enhancedRenderer && originalRoute.transitStartLocation) {
-      const cyclingSteps = originalRoute.directions.cycling;
-      const origin = cyclingSteps[0].start_location;
-
-      if (origin) {
-        directionsService.route(
-          {
-            origin: origin,
-            destination: originalRoute.transitStartLocation,
-            travelMode: google.maps.TravelMode.BICYCLING,
-          },
-          (result, status) => {
-            if (status === 'OK' && result) {
               enhancedRenderer.setDirections(result);
               const bounds = new window.google.maps.LatLngBounds();
               result.routes[0].legs[0].steps.forEach(step => {
                 bounds.extend(step.start_location);
                 bounds.extend(step.end_location);
               });
-              enhancedMap.fitBounds(bounds);
+              transitMap.fitBounds(bounds);
             }
           }
         );
       }
     }
-  }, [originalMap, enhancedMap, directionsRenderer, enhancedRenderer, showOriginalMap, showEnhancedMap, originalRoute]);
+  }, [bikingMap, transitMap, directionsRenderer, enhancedRenderer, showBikingMap, showTransitMap, originalRoute]);
 
   // Render step details
   const renderStepDetails = (step: DirectionStep) => {
@@ -219,21 +219,93 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       <SheetContent className="w-full sm:max-w-xl">
         <SheetTitle className="text-lg font-semibold mb-4">Route Details</SheetTitle>
         <div className="h-full flex flex-col">
-          <Tabs defaultValue="original" className="flex-1" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="original">Original</TabsTrigger>
-              <TabsTrigger value="enhanced">Enhanced</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="original" className="flex-1">
-              {!showOriginalMap && (
-                <button onClick={() => setShowOriginalMap(true)} className="mb-4 p-2 bg-blue-500 text-white rounded">
+          {originalRoute.bikeMinutes > 0 ? (
+            <Tabs defaultValue="biking" className="flex-1" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="biking">Biking Leg</TabsTrigger>
+                <TabsTrigger value="transit">Transit Leg</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="biking" className="flex-1">
+                {!showBikingMap && (
+                  <button onClick={() => setShowBikingMap(true)} className="mb-4 p-2 bg-blue-500 text-white rounded">
+                    Show Map
+                  </button>
+                )}
+                {showBikingMap && (
+                  <div 
+                    ref={bikingMapRef}
+                    style={{ height: '400px', width: '100%' }}
+                    className="bg-gray-100 rounded-md mb-4"
+                  />
+                )}
+                <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
+                  <Clock className="h-5 w-5 text-gray-500" />
+                  <span className="text-lg font-medium">
+                    {originalRoute.bikeMinutes} minutes
+                  </span>
+                </div>
+                <div className="mt-4 divide-y">
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
+                      Step by Step Directions
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="bg-gray-50 rounded-md">
+                      {originalRoute.directions.cycling.map((step, index) => (
+                        <div key={index}>
+                          {renderStepDetails(step)}
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="transit" className="flex-1">
+                {!showTransitMap && (
+                  <button onClick={() => setShowTransitMap(true)} className="mb-4 p-2 bg-blue-500 text-white rounded">
+                    Show Map
+                  </button>
+                )}
+                {showTransitMap && (
+                  <div 
+                    ref={transitMapRef}
+                    style={{ height: '400px', width: '100%' }}
+                    className="bg-gray-100 rounded-md mb-4"
+                  />
+                )}
+                <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
+                  <Clock className="h-5 w-5 text-gray-500" />
+                  <span className="text-lg font-medium">
+                    {originalRoute.subwayMinutes} minutes
+                  </span>
+                </div>
+                <div className="mt-4 divide-y">
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
+                      Step by Step Directions
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="bg-gray-50 rounded-md">
+                      {originalRoute.directions.transit.map((step, index) => (
+                        <div key={index}>
+                          {renderStepDetails(step)}
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex-1">
+              {!showTransitMap && (
+                <button onClick={() => setShowTransitMap(true)} className="mb-4 p-2 bg-blue-500 text-white rounded">
                   Show Map
                 </button>
               )}
-              {showOriginalMap && (
+              {showTransitMap && (
                 <div 
-                  ref={originalMapRef}
+                  ref={transitMapRef}
                   style={{ height: '400px', width: '100%' }}
                   className="bg-gray-100 rounded-md mb-4"
                 />
@@ -258,43 +330,8 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
                   </CollapsibleContent>
                 </Collapsible>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="enhanced" className="flex-1">
-              {!showEnhancedMap && (
-                <button onClick={() => setShowEnhancedMap(true)} className="mb-4 p-2 bg-blue-500 text-white rounded">
-                  Show Map
-                </button>
-              )}
-              {showEnhancedMap && (
-                <div 
-                  ref={enhancedMapRef}
-                  style={{ height: '400px', width: '100%' }}
-                  className="bg-gray-100 rounded-md mb-4"
-                />
-              )}
-              <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
-                <Clock className="h-5 w-5 text-gray-500" />
-                <span className="text-lg font-medium">
-                  {enhancedDuration} minutes
-                </span>
-              </div>
-              <div className="mt-4 divide-y">
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
-                    Step by Step Directions
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="bg-gray-50 rounded-md">
-                    {originalRoute.directions.cycling.map((step, index) => (
-                      <div key={index}>
-                        {renderStepDetails(step)}
-                      </div>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

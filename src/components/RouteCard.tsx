@@ -1,4 +1,4 @@
-import { Clock, Train, Bike } from "lucide-react";
+import { Clock, Train, Bike, Footprints } from "lucide-react";
 
 interface RouteCardProps {
   duration: number;
@@ -20,13 +20,21 @@ const RouteCard = ({ duration, bikeMinutes, subwayMinutes, onClick }: RouteCardP
         </div>
       </div>
       <div className="flex space-x-4">
-        <div className="flex items-center space-x-2">
-          <Bike className="h-4 w-4 text-ios-blue" />
-          <span className="text-sm text-ios-gray">{bikeMinutes} min</span>
-        </div>
+        {bikeMinutes > 0 && (
+          <div className="flex items-center space-x-2">
+            <Bike className="h-4 w-4 text-ios-blue" />
+            <span className="text-sm text-ios-gray">{bikeMinutes} min</span>
+          </div>
+        )}
         <div className="flex items-center space-x-2">
           <Train className="h-4 w-4 text-ios-blue" />
           <span className="text-sm text-ios-gray">{subwayMinutes} min</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Footprints className="h-4 w-4 text-ios-blue" />
+          <span className="text-sm text-ios-gray">
+            {Math.max(0, duration - (bikeMinutes + subwayMinutes))} min
+          </span>
         </div>
       </div>
     </div>

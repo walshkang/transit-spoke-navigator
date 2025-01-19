@@ -37,14 +37,19 @@ const RouteResults = ({
         </h2>
         <p className="text-sm text-gray-500">{selectedResult.address}</p>
       </div>
+      
       {routes.map((route, index) => (
-        <RouteCard
-          key={index}
-          duration={route.duration}
-          bikeMinutes={route.bikeMinutes}
-          subwayMinutes={route.subwayMinutes}
-          onClick={() => onRouteSelect(route)}
-        />
+        <div key={index}>
+          <h3 className="text-md font-medium text-gray-700 mb-2">
+            {index === 0 ? "Normal Routing" : "Enhanced Routing"}
+          </h3>
+          <RouteCard
+            duration={route.duration}
+            bikeMinutes={route.bikeMinutes}
+            subwayMinutes={route.subwayMinutes}
+            onClick={() => onRouteSelect(route)}
+          />
+        </div>
       ))}
     </div>
   );
