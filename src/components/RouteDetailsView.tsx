@@ -245,7 +245,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
                     {originalRoute.bikeMinutes} minutes
                   </span>
                 </div>
-                <div className="mt-4 divide-y">
+                <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
                   <Collapsible>
                     <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
                       Step by Step Directions
@@ -280,7 +280,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
                     {originalRoute.subwayMinutes} minutes
                   </span>
                 </div>
-                <div className="mt-4 divide-y">
+                <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
                   <Collapsible>
                     <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
                       Step by Step Directions
@@ -316,7 +316,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
                   {originalRoute.duration} minutes
                 </span>
               </div>
-              <div className="mt-4 divide-y">
+              <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
                     Step by Step Directions
