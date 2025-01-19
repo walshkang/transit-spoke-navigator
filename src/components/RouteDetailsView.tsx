@@ -67,37 +67,35 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
   const enhancedDuration = originalRoute.bikeMinutes + 
     (originalRoute.subwayMinutes - (originalRoute?.transitStartLocation ? 5 : 0));
 
+  // Effect to cleanup maps when sheet is closed
   useEffect(() => {
-    if (!isOpen || !originalRoute || !window.google) {
-      console.log('Conditions not met:', { isOpen, hasRoute: !!originalRoute, hasGoogle: !!window.google });
-      return;
-    }
-
-    // Cleanup previous instances
-    return () => {
+    if (!isOpen) {
       if (directionsRenderer) directionsRenderer.setMap(null);
       if (enhancedRenderer) enhancedRenderer.setMap(null);
       setOriginalMap(null);
       setEnhancedMap(null);
-    };
+      setShowOriginalMap(false);
+      setShowEnhancedMap(false);
+    }
   }, [isOpen]);
 
-  // Effect to initialize maps when the sheet is opened and maps are shown
+  // Effect to initialize maps when shown
   useEffect(() => {
     if (!isOpen || !originalRoute || !window.google || (!showOriginalMap && !showEnhancedMap)) return;
 
-    console.log('Initializing maps with route:', originalRoute);
-
-    // Initialize original map
-    if (showOriginalMap && originalMapRef.current && !originalMap) {
-      console.log('Creating original map');
-      const map = new window.google.maps.Map(originalMapRef.current, {
+    const initMap = (ref: HTMLDivElement) => {
+      return new window.google.maps.Map(ref, {
         zoom: 12,
         center: { lat: 40.7128, lng: -74.0060 },
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
       });
+    };
+
+    // Initialize original map
+    if (showOriginalMap && originalMapRef.current && !originalMap) {
+      const map = initMap(originalMapRef.current);
       setOriginalMap(map);
 
       const renderer = new window.google.maps.DirectionsRenderer({
@@ -110,14 +108,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
 
     // Initialize enhanced map
     if (showEnhancedMap && enhancedMapRef.current && !enhancedMap) {
-      console.log('Creating enhanced map');
-      const map = new window.google.maps.Map(enhancedMapRef.current, {
-        zoom: 12,
-        center: { lat: 40.7128, lng: -74.0060 },
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
+      const map = initMap(enhancedMapRef.current);
       setEnhancedMap(map);
 
       const renderer = new window.google.maps.DirectionsRenderer({
@@ -127,38 +118,30 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       });
       setEnhancedRenderer(renderer);
     }
-  }, [isOpen, originalRoute, showOriginalMap, showEnhancedMap]);
+  }, [isOpen, showOriginalMap, showEnhancedMap]);
 
   // Effect to draw routes on the maps
   useEffect(() => {
-    if (!originalMap || !enhancedMap || !directionsRenderer || !enhancedRenderer || !originalRoute.directions) {
-      console.log('Missing required elements for route rendering');
-      return;
-    }
-
-    console.log('Drawing routes');
+    if (!originalRoute.directions) return;
 
     const directionsService = new window.google.maps.DirectionsService();
-    
+
     // Draw original route
-    if (showOriginalMap && originalRoute.directions.transit.length > 0) {
-      const origin = originalRoute.directions.transit[0].start_location;
-      const destination = originalRoute.directions.transit[originalRoute.directions.transit.length - 1].end_location;
-      
-      console.log('Route endpoints:', { origin, destination });
+    if (showOriginalMap && originalMap && directionsRenderer && originalRoute.directions.transit.length > 0) {
+      const transitSteps = originalRoute.directions.transit;
+      const origin = transitSteps[0].start_location;
+      const destination = transitSteps[transitSteps.length - 1].end_location;
 
       if (origin && destination) {
         directionsService.route(
           {
             origin: origin,
             destination: destination,
-            travelMode: window.google.maps.TravelMode.TRANSIT,
+            travelMode: google.maps.TravelMode.TRANSIT,
           },
           (result, status) => {
-            console.log('Transit route result:', { status, result });
             if (status === 'OK' && result) {
               directionsRenderer.setDirections(result);
-              
               const bounds = new window.google.maps.LatLngBounds();
               result.routes[0].legs[0].steps.forEach(step => {
                 bounds.extend(step.start_location);
@@ -171,22 +154,21 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       }
     }
 
-    // Draw enhanced route
-    if (showEnhancedMap && originalRoute.transitStartLocation && originalRoute.directions.cycling.length > 0) {
-      const origin = originalRoute.directions.cycling[0].start_location;
-      
+    // Draw enhanced route (cycling portion)
+    if (showEnhancedMap && enhancedMap && enhancedRenderer && originalRoute.transitStartLocation) {
+      const cyclingSteps = originalRoute.directions.cycling;
+      const origin = cyclingSteps[0].start_location;
+
       if (origin) {
         directionsService.route(
           {
             origin: origin,
             destination: originalRoute.transitStartLocation,
-            travelMode: window.google.maps.TravelMode.BICYCLING,
+            travelMode: google.maps.TravelMode.BICYCLING,
           },
           (result, status) => {
-            console.log('Cycling route result:', { status, result });
             if (status === 'OK' && result) {
               enhancedRenderer.setDirections(result);
-              
               const bounds = new window.google.maps.LatLngBounds();
               result.routes[0].legs[0].steps.forEach(step => {
                 bounds.extend(step.start_location);
@@ -198,7 +180,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
         );
       }
     }
-  }, [originalMap, enhancedMap, directionsRenderer, enhancedRenderer, originalRoute, showOriginalMap, showEnhancedMap]);
+  }, [originalMap, enhancedMap, directionsRenderer, enhancedRenderer, showOriginalMap, showEnhancedMap, originalRoute]);
 
   // Render step details
   const renderStepDetails = (step: DirectionStep) => {
