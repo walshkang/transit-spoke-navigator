@@ -3,8 +3,8 @@ import { Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Route } from "@/types/route";
-import RouteMap from "./RouteMap";
-import StepDetails from "./StepDetails";
+import RouteMap from "@/components/route-details/RouteMap";
+import StepDetails from "@/components/route-details/StepDetails";
 
 interface RouteDetailsViewProps {
   isOpen: boolean;
