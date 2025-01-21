@@ -3,7 +3,7 @@ import SearchBar from "@/components/SearchBar";
 import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
-import RouteDetailsView from "@/components/RouteDetailsView";
+import RouteDetailsView from "@/components/route-details/RouteDetailsView";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
