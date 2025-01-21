@@ -3,9 +3,20 @@ import { useEffect, useRef } from "react";
 interface RouteMapProps {
   isVisible: boolean;
   onMapLoad: (map: google.maps.Map) => void;
+  origin?: google.maps.LatLng;
+  waypoint?: google.maps.LatLng;
+  destination?: google.maps.LatLng;
+  travelMode?: google.maps.TravelMode;
 }
 
-const RouteMap = ({ isVisible, onMapLoad }: RouteMapProps) => {
+const RouteMap = ({ 
+  isVisible, 
+  onMapLoad,
+  origin,
+  waypoint,
+  destination,
+  travelMode 
+}: RouteMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -14,22 +13,17 @@ interface RouteDetailsViewProps {
 }
 
 const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewProps) => {
-  const [activeTab, setActiveTab] = useState("biking");
-  const [showBikingMap, setShowBikingMap] = useState(false);
-  const [showTransitMap, setShowTransitMap] = useState(false);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
-  const [enhancedRenderer, setEnhancedRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       if (directionsRenderer) directionsRenderer.setMap(null);
-      if (enhancedRenderer) enhancedRenderer.setMap(null);
-      setShowBikingMap(false);
-      setShowTransitMap(false);
+      setShowMap(false);
     }
-  }, [isOpen, directionsRenderer, enhancedRenderer]);
+  }, [isOpen, directionsRenderer]);
 
-  const handleBikingMapLoad = useCallback((map: google.maps.Map) => {
+  const handleMapLoad = useCallback((map: google.maps.Map) => {
     const renderer = new window.google.maps.DirectionsRenderer({
       map,
       suppressMarkers: false,
@@ -38,41 +32,44 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
     setDirectionsRenderer(renderer);
   }, []);
 
-  const handleTransitMapLoad = useCallback((map: google.maps.Map) => {
-    const renderer = new window.google.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: false,
-      preserveViewport: false,
-    });
-    setEnhancedRenderer(renderer);
-  }, []);
-
   useEffect(() => {
-    if (!originalRoute.directions) return;
+    if (!originalRoute.directions || !showMap || !directionsRenderer) return;
 
     const directionsService = new window.google.maps.DirectionsService();
 
-    if (showBikingMap && directionsRenderer && originalRoute.directions.cycling.length > 0) {
+    if (originalRoute.bikeMinutes > 0) {
+      // For enhanced routes, we'll use waypoints to show both legs
       const cyclingSteps = originalRoute.directions.cycling;
-      const origin = cyclingSteps[0].start_location;
-
-      if (origin) {
+      const transitSteps = originalRoute.directions.transit;
+      
+      if (cyclingSteps[0].start_location && transitSteps[transitSteps.length - 1].end_location) {
         directionsService.route(
           {
-            origin,
-            destination: originalRoute.transitStartLocation,
+            origin: cyclingSteps[0].start_location,
+            destination: transitSteps[transitSteps.length - 1].end_location,
+            waypoints: [{
+              location: originalRoute.transitStartLocation!,
+              stopover: true
+            }],
             travelMode: google.maps.TravelMode.BICYCLING,
           },
           (result, status) => {
             if (status === 'OK' && result) {
               directionsRenderer.setDirections(result);
+              const bounds = new window.google.maps.LatLngBounds();
+              result.routes[0].legs.forEach(leg => {
+                leg.steps.forEach(step => {
+                  bounds.extend(step.start_location);
+                  bounds.extend(step.end_location);
+                });
+              });
+              directionsRenderer.getMap()?.fitBounds(bounds);
             }
           }
         );
       }
-    }
-
-    if (showTransitMap && enhancedRenderer && originalRoute.directions.transit.length > 0) {
+    } else {
+      // For regular transit routes, show the transit route
       const transitSteps = originalRoute.directions.transit;
       const origin = transitSteps[0].start_location;
       const destination = transitSteps[transitSteps.length - 1].end_location;
@@ -86,132 +83,67 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
           },
           (result, status) => {
             if (status === 'OK' && result) {
-              enhancedRenderer.setDirections(result);
+              directionsRenderer.setDirections(result);
+              const bounds = new window.google.maps.LatLngBounds();
+              result.routes[0].legs[0].steps.forEach(step => {
+                bounds.extend(step.start_location);
+                bounds.extend(step.end_location);
+              });
+              directionsRenderer.getMap()?.fitBounds(bounds);
             }
           }
         );
       }
     }
-  }, [showBikingMap, showTransitMap, directionsRenderer, enhancedRenderer, originalRoute]);
+  }, [showMap, directionsRenderer, originalRoute]);
+
+  // Combine cycling and transit steps for enhanced routes
+  const allSteps = originalRoute.bikeMinutes > 0 
+    ? [...originalRoute.directions.cycling, ...originalRoute.directions.transit]
+    : originalRoute.directions.transit;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-xl">
         <SheetTitle className="text-lg font-semibold mb-4">Route Details</SheetTitle>
         <div className="h-full flex flex-col">
-          {originalRoute.bikeMinutes > 0 ? (
-            <Tabs defaultValue="biking" className="flex-1" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="biking">Biking Leg</TabsTrigger>
-                <TabsTrigger value="transit">Transit Leg</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="biking">
-                {!showBikingMap && (
-                  <button 
-                    onClick={() => setShowBikingMap(true)} 
-                    className="mb-4 p-2 bg-blue-500 text-white rounded"
-                  >
-                    Show Map
-                  </button>
-                )}
-                {showBikingMap && (
-                  <RouteMap 
-                    isVisible={showBikingMap} 
-                    onMapLoad={handleBikingMapLoad} 
-                  />
-                )}
-                <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
-                  <Clock className="h-5 w-5 text-gray-500" />
-                  <span className="text-lg font-medium">
-                    {originalRoute.bikeMinutes} minutes
-                  </span>
-                </div>
-                <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
-                      Step by Step Directions
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="bg-gray-50 rounded-md">
-                      {originalRoute.directions.cycling.map((step, index) => (
-                        <StepDetails key={index} step={step} />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="transit">
-                {!showTransitMap && (
-                  <button 
-                    onClick={() => setShowTransitMap(true)} 
-                    className="mb-4 p-2 bg-blue-500 text-white rounded"
-                  >
-                    Show Map
-                  </button>
-                )}
-                {showTransitMap && (
-                  <RouteMap 
-                    isVisible={showTransitMap} 
-                    onMapLoad={handleTransitMapLoad} 
-                  />
-                )}
-                <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
-                  <Clock className="h-5 w-5 text-gray-500" />
-                  <span className="text-lg font-medium">
-                    {originalRoute.subwayMinutes} minutes
-                  </span>
-                </div>
-                <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
-                      Step by Step Directions
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="bg-gray-50 rounded-md">
-                      {originalRoute.directions.transit.map((step, index) => (
-                        <StepDetails key={index} step={step} />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="flex-1">
-              {!showTransitMap && (
-                <button 
-                  onClick={() => setShowTransitMap(true)} 
-                  className="mb-4 p-2 bg-blue-500 text-white rounded"
-                >
-                  Show Map
-                </button>
-              )}
-              {showTransitMap && (
-                <RouteMap 
-                  isVisible={showTransitMap} 
-                  onMapLoad={handleTransitMapLoad} 
-                />
-              )}
-              <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
-                <Clock className="h-5 w-5 text-gray-500" />
-                <span className="text-lg font-medium">
-                  {originalRoute.duration} minutes
-                </span>
-              </div>
-              <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
-                    Step by Step Directions
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="bg-gray-50 rounded-md">
-                    {originalRoute.directions.transit.map((step, index) => (
-                      <StepDetails key={index} step={step} />
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
+          <div className="flex-1">
+            {!showMap && (
+              <button 
+                onClick={() => setShowMap(true)} 
+                className="mb-4 p-2 bg-blue-500 text-white rounded"
+              >
+                Show Map
+              </button>
+            )}
+            {showMap && (
+              <RouteMap 
+                isVisible={showMap} 
+                onMapLoad={handleMapLoad}
+              />
+            )}
+            <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
+              <Clock className="h-5 w-5 text-gray-500" />
+              <span className="text-lg font-medium">
+                {originalRoute.bikeMinutes > 0 
+                  ? `${originalRoute.bikeMinutes + originalRoute.subwayMinutes} minutes total (${originalRoute.bikeMinutes} biking, ${originalRoute.subwayMinutes} transit)`
+                  : `${originalRoute.duration} minutes`
+                }
+              </span>
             </div>
-          )}
+            <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
+                  Step by Step Directions
+                </CollapsibleTrigger>
+                <CollapsibleContent className="bg-gray-50 rounded-md">
+                  {allSteps.map((step, index) => (
+                    <StepDetails key={index} step={step} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
