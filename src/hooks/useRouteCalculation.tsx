@@ -20,6 +20,7 @@ interface Route {
   duration: number;
   bikeMinutes: number;
   subwayMinutes: number;
+  walkingMinutes: number;
   transitStartLocation?: google.maps.LatLng;
   directions: {
     transit: DirectionStep[];
@@ -49,6 +50,22 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       }
     } : undefined
   });
+
+  const calculateWalkingMinutes = (steps: google.maps.DirectionsStep[]): number => {
+    return Math.round(
+      steps
+        .filter(step => step.travel_mode === google.maps.TravelMode.WALKING)
+        .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+    );
+  };
+
+  const calculateTransitMinutes = (steps: google.maps.DirectionsStep[]): number => {
+    return Math.round(
+      steps
+        .filter(step => step.travel_mode === google.maps.TravelMode.TRANSIT)
+        .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+    );
+  };
 
   const calculateRoutes = async (destination: SearchResult) => {
     if (!currentLocation) {
@@ -136,6 +153,10 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             });
           });
 
+          const remainingTransitSteps = remainingTransitResponse.routes[0].legs[0].steps;
+          const walkingMinutes = calculateWalkingMinutes(remainingTransitSteps);
+          const transitMinutes = calculateTransitMinutes(remainingTransitSteps);
+
           // Construct enhanced route
           enhancedRoute = {
             duration: Math.round(
@@ -145,9 +166,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             bikeMinutes: Math.round(
               (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
             ),
-            subwayMinutes: Math.round(
-              (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
-            ),
+            subwayMinutes: transitMinutes,
+            walkingMinutes,
             transitStartLocation,
             directions: {
               transit: remainingTransitResponse.routes[0].legs[0].steps.map(formatDirectionStep),
@@ -157,15 +177,17 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         }
       }
 
+      const walkingMinutes = calculateWalkingMinutes(transitSteps);
+      const transitMinutes = calculateTransitMinutes(transitSteps);
+
       // Create original route (always from user's location)
       const originalRoute: Route = {
         duration: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
         ),
         bikeMinutes: 0,
-        subwayMinutes: Math.round(
-          (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
-        ),
+        subwayMinutes: transitMinutes,
+        walkingMinutes,
         directions: {
           transit: transitSteps.map(formatDirectionStep),
           cycling: []

@@ -6,6 +6,7 @@ interface Route {
   duration: number;
   bikeMinutes: number;
   subwayMinutes: number;
+  walkingMinutes: number;
 }
 
 interface RouteResultsProps {
@@ -47,6 +48,7 @@ const RouteResults = ({
             duration={route.duration}
             bikeMinutes={route.bikeMinutes}
             subwayMinutes={route.subwayMinutes}
+            walkingMinutes={route.walkingMinutes}
             onClick={() => onRouteSelect(route)}
           />
         </div>

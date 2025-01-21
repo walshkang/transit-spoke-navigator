@@ -4,10 +4,11 @@ interface RouteCardProps {
   duration: number;
   bikeMinutes: number;
   subwayMinutes: number;
+  walkingMinutes: number;
   onClick: () => void;
 }
 
-const RouteCard = ({ duration, bikeMinutes, subwayMinutes, onClick }: RouteCardProps) => {
+const RouteCard = ({ duration, bikeMinutes, subwayMinutes, walkingMinutes, onClick }: RouteCardProps) => {
   return (
     <div
       onClick={onClick}
@@ -32,9 +33,7 @@ const RouteCard = ({ duration, bikeMinutes, subwayMinutes, onClick }: RouteCardP
         </div>
         <div className="flex items-center space-x-2">
           <Footprints className="h-4 w-4 text-ios-blue" />
-          <span className="text-sm text-ios-gray">
-            {Math.max(0, duration - (bikeMinutes + subwayMinutes))} min
-          </span>
+          <span className="text-sm text-ios-gray">{walkingMinutes} min</span>
         </div>
       </div>
     </div>
