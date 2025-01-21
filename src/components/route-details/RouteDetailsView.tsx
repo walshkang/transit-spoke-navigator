@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Route } from "@/types/route";
-import RouteMap from "./RouteMap";
-import StepDetails from "./StepDetails";
+import RouteMap from "@/components/route-details/RouteMap";
+import StepDetails from "@/components/route-details/StepDetails";
 
 interface RouteDetailsViewProps {
   isOpen: boolean;
@@ -18,19 +18,22 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
 
   useEffect(() => {
     if (!isOpen) {
-      if (directionsRenderer) directionsRenderer.setMap(null);
+      if (directionsRenderer) {
+        directionsRenderer.setMap(null);
+      }
       setShowMap(false);
     }
   }, [isOpen, directionsRenderer]);
 
-  const handleMapLoad = useCallback((map: google.maps.Map) => {
+  const handleMapLoad = (map: google.maps.Map) => {
+    console.log("Map loaded, initializing DirectionsRenderer");
     const renderer = new window.google.maps.DirectionsRenderer({
       map,
       suppressMarkers: false,
       preserveViewport: false,
     });
     setDirectionsRenderer(renderer);
-  }, []);
+  };
 
   useEffect(() => {
     if (!originalRoute.directions || !showMap || !directionsRenderer) return;
@@ -38,7 +41,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
     const directionsService = new window.google.maps.DirectionsService();
 
     if (originalRoute.bikeMinutes > 0) {
-      // For enhanced routes, we'll use waypoints to show both legs
+      // For enhanced routes, use waypoints to show both legs
       const cyclingSteps = originalRoute.directions.cycling;
       const transitSteps = originalRoute.directions.transit;
       
@@ -55,6 +58,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
           },
           (result, status) => {
             if (status === 'OK' && result) {
+              console.log("Received directions for enhanced route");
               directionsRenderer.setDirections(result);
               const bounds = new window.google.maps.LatLngBounds();
               result.routes[0].legs.forEach(leg => {
@@ -69,7 +73,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
         );
       }
     } else {
-      // For regular transit routes, show the transit route
+      // For regular transit routes
       const transitSteps = originalRoute.directions.transit;
       const origin = transitSteps[0].start_location;
       const destination = transitSteps[transitSteps.length - 1].end_location;
@@ -83,6 +87,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
           },
           (result, status) => {
             if (status === 'OK' && result) {
+              console.log("Received directions for transit route");
               directionsRenderer.setDirections(result);
               const bounds = new window.google.maps.LatLngBounds();
               result.routes[0].legs[0].steps.forEach(step => {
