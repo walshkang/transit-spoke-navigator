@@ -13,94 +13,19 @@ interface RouteDetailsViewProps {
 }
 
 const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewProps) => {
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
-      if (directionsRenderer) {
-        directionsRenderer.setMap(null);
-      }
       setShowMap(false);
     }
-  }, [isOpen, directionsRenderer]);
+  }, [isOpen]);
 
-  const handleMapLoad = (map: google.maps.Map) => {
-    console.log("Map loaded, initializing DirectionsRenderer");
-    const renderer = new window.google.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: false,
-      preserveViewport: false,
-    });
-    setDirectionsRenderer(renderer);
+  const handleMapLoad = (loadedMap: google.maps.Map) => {
+    console.log("Map loaded, initializing map instance");
+    setMap(loadedMap);
   };
-
-  useEffect(() => {
-    if (!originalRoute.directions || !showMap || !directionsRenderer) return;
-
-    const directionsService = new window.google.maps.DirectionsService();
-
-    if (originalRoute.bikeMinutes > 0) {
-      // For enhanced routes, use waypoints to show both legs
-      const cyclingSteps = originalRoute.directions.cycling;
-      const transitSteps = originalRoute.directions.transit;
-      
-      if (cyclingSteps[0].start_location && transitSteps[transitSteps.length - 1].end_location) {
-        directionsService.route(
-          {
-            origin: cyclingSteps[0].start_location,
-            destination: transitSteps[transitSteps.length - 1].end_location,
-            waypoints: [{
-              location: originalRoute.transitStartLocation!,
-              stopover: true
-            }],
-            travelMode: google.maps.TravelMode.BICYCLING,
-          },
-          (result, status) => {
-            if (status === 'OK' && result) {
-              console.log("Received directions for enhanced route");
-              directionsRenderer.setDirections(result);
-              const bounds = new window.google.maps.LatLngBounds();
-              result.routes[0].legs.forEach(leg => {
-                leg.steps.forEach(step => {
-                  bounds.extend(step.start_location);
-                  bounds.extend(step.end_location);
-                });
-              });
-              directionsRenderer.getMap()?.fitBounds(bounds);
-            }
-          }
-        );
-      }
-    } else {
-      // For regular transit routes
-      const transitSteps = originalRoute.directions.transit;
-      const origin = transitSteps[0].start_location;
-      const destination = transitSteps[transitSteps.length - 1].end_location;
-
-      if (origin && destination) {
-        directionsService.route(
-          {
-            origin,
-            destination,
-            travelMode: google.maps.TravelMode.TRANSIT,
-          },
-          (result, status) => {
-            if (status === 'OK' && result) {
-              console.log("Received directions for transit route");
-              directionsRenderer.setDirections(result);
-              const bounds = new window.google.maps.LatLngBounds();
-              result.routes[0].legs[0].steps.forEach(step => {
-                bounds.extend(step.start_location);
-                bounds.extend(step.end_location);
-              });
-              directionsRenderer.getMap()?.fitBounds(bounds);
-            }
-          }
-        );
-      }
-    }
-  }, [showMap, directionsRenderer, originalRoute]);
 
   // Combine cycling and transit steps for enhanced routes
   const allSteps = originalRoute.bikeMinutes > 0 
@@ -125,6 +50,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
               <RouteMap 
                 isVisible={showMap} 
                 onMapLoad={handleMapLoad}
+                route={originalRoute}
               />
             )}
             <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
