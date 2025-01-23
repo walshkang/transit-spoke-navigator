@@ -100,6 +100,9 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 bounds.extend(step.end_location);
               });
 
+              // Clear any existing renderers
+              directionsRendererRef.current.setMap(null);
+
               // Render both routes with different colors
               const cyclingRenderer = new google.maps.DirectionsRenderer({
                 map: mapInstanceRef.current,
@@ -149,31 +152,48 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
         } else {
           // Regular transit route
           const transitSteps = route.directions.transit;
-          const origin = transitSteps[0]?.start_location;
-          const destination = transitSteps[transitSteps.length - 1]?.end_location;
+          if (transitSteps.length > 0) {
+            const origin = transitSteps[0].start_location;
+            const destination = transitSteps[transitSteps.length - 1].end_location;
 
-          if (origin && destination) {
-            const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-              directionsService.route({
-                origin,
-                destination,
-                travelMode: google.maps.TravelMode.TRANSIT,
-              }, (result, status) => {
-                if (status === 'OK' && result) {
-                  resolve(result);
-                } else {
-                  reject(status);
+            if (origin && destination) {
+              const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+                directionsService.route({
+                  origin,
+                  destination,
+                  travelMode: google.maps.TravelMode.TRANSIT,
+                }, (result, status) => {
+                  if (status === 'OK' && result) {
+                    resolve(result);
+                  } else {
+                    reject(status);
+                  }
+                });
+              });
+
+              // Clear any existing renderers
+              if (directionsRendererRef.current) {
+                directionsRendererRef.current.setMap(null);
+              }
+
+              // Create a new renderer for the transit route
+              const transitRenderer = new google.maps.DirectionsRenderer({
+                map: mapInstanceRef.current,
+                directions: result,
+                suppressMarkers: false,
+                polylineOptions: {
+                  strokeColor: "#2196F3", // Blue for transit
+                  strokeWeight: 5
                 }
               });
-            });
 
-            directionsRendererRef.current.setDirections(result);
-            const bounds = new google.maps.LatLngBounds();
-            result.routes[0].legs[0].steps.forEach(step => {
-              bounds.extend(step.start_location);
-              bounds.extend(step.end_location);
-            });
-            mapInstanceRef.current.fitBounds(bounds);
+              const bounds = new google.maps.LatLngBounds();
+              result.routes[0].legs[0].steps.forEach(step => {
+                bounds.extend(step.start_location);
+                bounds.extend(step.end_location);
+              });
+              mapInstanceRef.current.fitBounds(bounds);
+            }
           }
         }
       } catch (error) {
