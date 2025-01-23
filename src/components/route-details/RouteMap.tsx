@@ -70,6 +70,15 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 });
               });
 
+              // Format cycling instructions with proper HTML
+              cyclingResult.routes[0].legs[0].steps.forEach(step => {
+                const formattedInstructions = step.instructions
+                  .replace(/<\/?b>/g, '') // Remove existing b tags
+                  .replace(/([A-Za-z0-9\s]+) on ([^<]+)/g, 'Head <b>$1</b> on <b>$2</b>') // Format street names
+                  .replace(/Restricted usage road/g, '<div style="font-size:0.9em">Restricted usage road</div>'); // Format restrictions
+                step.instructions = formattedInstructions;
+              });
+
               // Then render transit route
               const transitResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
                 directionsService.route({
