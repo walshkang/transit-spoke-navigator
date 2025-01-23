@@ -4,6 +4,7 @@ import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
+import ApiKeyInput from "@/components/ApiKeyInput";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
@@ -15,6 +16,7 @@ const Index = () => {
   const [error, setError] = useState<LocationError | null>(null);
   const [isRouteDetailsOpen, setIsRouteDetailsOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
 
   const { 
     results, 
@@ -30,8 +32,20 @@ const Index = () => {
   } = useRouteCalculation(currentLocation);
 
   useEffect(() => {
-    getLocation();
-  }, []);
+    if (apiKey) {
+      getLocation();
+      // Load Google Maps API with the provided key
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      document.head.appendChild(script);
+
+      return () => {
+        // Cleanup: remove the script when component unmounts
+        document.head.removeChild(script);
+      };
+    }
+  }, [apiKey]);
 
   const getLocation = async () => {
     try {
@@ -54,6 +68,14 @@ const Index = () => {
     setSelectedRoute(route);
     setIsRouteDetailsOpen(true);
   };
+
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+  };
+
+  if (!apiKey) {
+    return <ApiKeyInput onSubmit={handleApiKeySubmit} />;
+  }
 
   return (
     <div className="min-h-screen bg-ios-background">
