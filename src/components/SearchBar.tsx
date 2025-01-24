@@ -17,13 +17,14 @@ const SearchBar = ({ placeholder, value, onChange, onSearch }: SearchBarProps) =
     }
   };
 
-  const handleSearchClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    onSearch();
-  };
-
   return (
-    <div className="relative flex gap-2">
+    <form 
+      className="relative flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSearch();
+      }}
+    >
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ios-gray h-4 w-4" />
         <Input
@@ -36,12 +37,12 @@ const SearchBar = ({ placeholder, value, onChange, onSearch }: SearchBarProps) =
         />
       </div>
       <Button 
-        onClick={handleSearchClick}
+        type="submit"
         className="bg-ios-blue hover:bg-ios-blue/90"
       >
         Search
       </Button>
-    </div>
+    </form>
   );
 };
 
