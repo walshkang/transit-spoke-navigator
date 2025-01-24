@@ -12,8 +12,14 @@ interface SearchBarProps {
 const SearchBar = ({ placeholder, value, onChange, onSearch }: SearchBarProps) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       onSearch();
     }
+  };
+
+  const handleSearchClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    onSearch();
   };
 
   return (
@@ -30,7 +36,7 @@ const SearchBar = ({ placeholder, value, onChange, onSearch }: SearchBarProps) =
         />
       </div>
       <Button 
-        onClick={onSearch}
+        onClick={handleSearchClick}
         className="bg-ios-blue hover:bg-ios-blue/90"
       >
         Search
