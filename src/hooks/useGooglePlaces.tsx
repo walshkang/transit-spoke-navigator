@@ -43,28 +43,52 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
       console.log("Search request:", request);
 
-      service.textSearch(request, (results, status) => {
+      const processResults = async (
+        results: google.maps.places.PlaceResult[] | null, 
+        status: google.maps.places.PlacesServiceStatus
+      ) => {
         console.log("Places API response status:", status);
         console.log("Raw results:", results);
 
         if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-          const formattedResults: SearchResult[] = results.map((result) => ({
-            id: result.place_id || Math.random().toString(),
-            name: result.name || "",
-            address: result.formatted_address || "",
-            location: {
-              lat: result.geometry?.location?.lat() || 0,
-              lng: result.geometry?.location?.lng() || 0,
-            },
-            distance: currentLocation
-              ? calculateDistance(
-                  currentLocation.latitude,
-                  currentLocation.longitude,
-                  result.geometry?.location?.lat() || 0,
-                  result.geometry?.location?.lng() || 0
-                )
-              : undefined,
-          }));
+          const formattedResults: SearchResult[] = await Promise.all(
+            results.map(async (result) => {
+              // Get additional details for each place
+              const placeDetails = await new Promise<google.maps.places.PlaceResult>((resolve, reject) => {
+                service.getDetails(
+                  {
+                    placeId: result.place_id!,
+                    fields: ['opening_hours']
+                  },
+                  (place, detailStatus) => {
+                    if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                      resolve(place);
+                    } else {
+                      reject(detailStatus);
+                    }
+                  }
+                );
+              }).catch(() => null); // If details fail, continue with basic info
+
+              return {
+                id: result.place_id || Math.random().toString(),
+                name: result.name || "",
+                address: result.formatted_address || "",
+                location: {
+                  lat: result.geometry?.location?.lat() || 0,
+                  lng: result.geometry?.location?.lng() || 0,
+                },
+                distance: currentLocation
+                  ? calculateDistance(
+                      currentLocation.latitude,
+                      currentLocation.longitude,
+                      result.geometry?.location?.lat() || 0,
+                      result.geometry?.location?.lng() || 0
+                    )
+                  : undefined,
+              };
+            })
+          );
           
           console.log("Formatted results:", formattedResults);
           setResults(formattedResults);
@@ -81,7 +105,9 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
           setIsLoading(false);
           document.body.removeChild(mapDiv);
         }
-      });
+      };
+
+      service.textSearch(request, processResults);
     } catch (error) {
       console.error("Search error:", error);
       toast({

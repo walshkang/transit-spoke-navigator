@@ -34,14 +34,12 @@ const Index = () => {
   useEffect(() => {
     if (apiKey) {
       getLocation();
-      // Load Google Maps API with the provided key
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       document.head.appendChild(script);
 
       return () => {
-        // Cleanup: remove the script when component unmounts
         document.head.removeChild(script);
       };
     }
@@ -61,7 +59,12 @@ const Index = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    searchPlaces(query);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      searchPlaces(searchQuery);
+    }
   };
 
   const handleRouteSelect = (route: any) => {
@@ -88,6 +91,7 @@ const Index = () => {
           placeholder="Where to?"
           value={searchQuery}
           onChange={handleSearch}
+          onSearch={handleSearchSubmit}
         />
 
         {selectedResult && routes.length > 0 ? (
