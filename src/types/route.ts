@@ -1,4 +1,5 @@
 import { SearchResult } from "./location";
+import { StationData } from "./gbfs";
 
 export interface DirectionStep {
   instructions: string;
@@ -20,6 +21,8 @@ export interface Route {
   subwayMinutes: number;
   walkingMinutes: number;
   transitStartLocation?: google.maps.LatLng;
+  startStation?: StationData;
+  endStation?: StationData;
   directions: {
     transit: DirectionStep[];
     cycling: DirectionStep[];
