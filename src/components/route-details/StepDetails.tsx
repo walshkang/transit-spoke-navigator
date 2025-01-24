@@ -1,18 +1,21 @@
 import { DirectionStep } from "@/types/route";
 import { getTravelModeIcon } from "@/utils/routeIcons";
+import DOMPurify from 'dompurify';
 
 interface StepDetailsProps {
   step: DirectionStep;
 }
 
 const StepDetails = ({ step }: StepDetailsProps) => {
+  const sanitizedInstructions = DOMPurify.sanitize(step.instructions);
+
   return (
     <div className="flex items-start space-x-3 p-3 border-b last:border-b-0">
       <div className="flex-shrink-0 mt-1">
         {getTravelModeIcon(step.mode)}
       </div>
       <div className="flex-grow">
-        <p className="font-medium text-sm">{step.instructions}</p>
+        <p className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: sanitizedInstructions }} />
         {step.distance && step.duration && (
           <p className="text-sm text-gray-500">
             {step.distance} • {step.duration}
