@@ -17,18 +17,23 @@ const Index = () => {
   const [isRouteDetailsOpen, setIsRouteDetailsOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [currentSearch, setCurrentSearch] = useState<SearchResult | null>(null);
 
   const { 
     results, 
     isLoading, 
-    searchPlaces 
+    searchPlaces,
+    setResults
   } = useGooglePlaces(currentLocation);
 
   const {
     routes,
     isCalculatingRoute,
     selectedResult,
-    calculateRoutes
+    calculateRoutes,
+    setRoutes,
+    setSelectedResult
   } = useRouteCalculation(currentLocation);
 
   useEffect(() => {
@@ -57,14 +62,45 @@ const Index = () => {
     }
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  const handleSearchSubmit = async () => {
+    if (!searchQuery.trim()) return;
+
+    // Cancel previous search
+    if (abortController) {
+      abortController.abort();
+    }
+
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
+
+    try {
+      await searchPlaces(searchQuery, newAbortController.signal);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setError({
+          title: "Search Error",
+          message: "Failed to fetch search results"
+        });
+      }
+    }
   };
 
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      searchPlaces(searchQuery);
+  const handleResetSearch = () => {
+    // Clear all search-related state
+    if (abortController) {
+      abortController.abort();
     }
+    setSearchQuery("");
+    setResults([]);
+    setCurrentSearch(null);
+    setSelectedResult(null);
+    setRoutes([]);
+    setAbortController(null);
+  };
+
+  const handleResultSelect = (result: SearchResult) => {
+    setCurrentSearch(result);
+    calculateRoutes(result);
   };
 
   const handleRouteSelect = (route: any) => {
@@ -75,6 +111,15 @@ const Index = () => {
   const handleApiKeySubmit = (key: string) => {
     setApiKey(key);
   };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
 
   if (!apiKey) {
     return <ApiKeyInput onSubmit={handleApiKeySubmit} />;
@@ -90,8 +135,10 @@ const Index = () => {
         <SearchBar
           placeholder="Where to?"
           value={searchQuery}
-          onChange={handleSearch}
+          onChange={setSearchQuery}
           onSearch={handleSearchSubmit}
+          showReset={!!currentSearch || searchQuery.length > 0}
+          onReset={handleResetSearch}
         />
 
         {selectedResult && routes.length > 0 ? (
@@ -100,12 +147,15 @@ const Index = () => {
             routes={routes}
             isCalculatingRoute={isCalculatingRoute}
             onRouteSelect={handleRouteSelect}
+            onNewSearch={handleResetSearch}
           />
         ) : (
           <SearchResults
             results={results}
             isLoading={isLoading}
-            onResultSelect={calculateRoutes}
+            onResultSelect={handleResultSelect}
+            onNewSearch={handleResetSearch}
+            currentSelection={currentSearch}
           />
         )}
 

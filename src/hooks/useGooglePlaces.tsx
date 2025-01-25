@@ -8,7 +8,7 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const searchPlaces = async (query: string) => {
+  const searchPlaces = async (query: string, signal?: AbortSignal) => {
     if (!query || query.trim().length < 3) {
       toast({
         title: "Search query too short",
@@ -21,22 +21,22 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
     setIsLoading(true);
     try {
-      console.log("Starting search with query:", query);
-      
-      // Wait for Google Maps to be loaded
-      if (!window.google || !window.google.maps) {
+      // Check if we need to abort before starting
+      if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      if (!window.google?.maps?.places) {
         toast({
           title: "Error",
           description: "Google Maps is not loaded yet. Please try again.",
           variant: "destructive",
         });
-        setIsLoading(false);
         return;
       }
 
       const mapDiv = document.createElement('div');
-      const map = new window.google.maps.Map(mapDiv);
-      const service = new window.google.maps.places.PlacesService(map);
+      const service = new window.google.maps.places.PlacesService(mapDiv);
 
       const request: google.maps.places.TextSearchRequest = {
         query: query.trim(),
@@ -48,53 +48,72 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
           : undefined,
       };
 
-      console.log("Search request:", request);
-
-      service.textSearch(request, (results, status) => {
-        console.log("Places API response status:", status);
-        console.log("Raw results:", results);
-
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-          const formattedResults: SearchResult[] = results.map((result) => ({
-            id: result.place_id || Math.random().toString(),
-            name: result.name || "",
-            address: result.formatted_address || "",
-            location: {
-              lat: result.geometry?.location?.lat() || 0,
-              lng: result.geometry?.location?.lng() || 0,
-            },
-            distance: currentLocation
-              ? calculateDistance(
-                  currentLocation.latitude,
-                  currentLocation.longitude,
-                  result.geometry?.location?.lat() || 0,
-                  result.geometry?.location?.lng() || 0
-                )
-              : undefined,
-          }));
+      const placesResults = await new Promise<google.maps.places.PlaceResult[]>(
+        (resolve, reject) => {
+          // Handle abort signal
+          const abortHandler = () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          };
           
-          console.log("Formatted results:", formattedResults);
-          setResults(formattedResults);
-        } else {
-          console.error("Places API error:", status);
-          toast({
-            title: "Error",
-            description: "Failed to fetch search results",
-            variant: "destructive",
+          if (signal) {
+            signal.addEventListener('abort', abortHandler);
+          }
+
+          service.textSearch(request, (results, status) => {
+            // Cleanup abort listener
+            if (signal) {
+              signal.removeEventListener('abort', abortHandler);
+            }
+
+            if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+              resolve(results || []);
+            } else {
+              reject(status);
+            }
           });
         }
-        setIsLoading(false);
-      });
+      );
+
+      const formattedResults = placesResults.map((result): SearchResult => ({
+        id: result.place_id || Math.random().toString(),
+        name: result.name || "",
+        address: result.formatted_address || "",
+        location: {
+          lat: result.geometry?.location?.lat() || 0,
+          lng: result.geometry?.location?.lng() || 0,
+        },
+        distance: currentLocation
+          ? calculateDistance(
+              currentLocation.latitude,
+              currentLocation.longitude,
+              result.geometry?.location?.lat() || 0,
+              result.geometry?.location?.lng() || 0
+            )
+          : undefined,
+      }));
+
+      setResults(formattedResults);
     } catch (error) {
-      console.error("Search error:", error);
-      toast({
-        title: "Error",
-        description: "An error occurred while searching",
-        variant: "destructive",
-      });
+      // Only show errors if not aborted
+      if (error.name !== 'AbortError') {
+        console.error("Search error:", error);
+        toast({
+          title: "Error",
+          description: error instanceof DOMException 
+            ? "Search canceled" 
+            : "Failed to fetch search results",
+          variant: "destructive",
+        });
+      }
+    } finally {
       setIsLoading(false);
     }
   };
 
-  return { results, isLoading, searchPlaces, setResults };
+  return { 
+    results, 
+    isLoading, 
+    searchPlaces, 
+    setResults 
+  };
 };
