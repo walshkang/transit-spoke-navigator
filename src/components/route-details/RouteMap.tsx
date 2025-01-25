@@ -45,17 +45,35 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
 
       try {
         if (route.bikeMinutes > 0 && route.transitStartLocation) {
-          // Enhanced route with cycling + transit
+          // Enhanced route with walking + cycling + transit
+          const walkingSteps = route.directions.walking;
           const cyclingSteps = route.directions.cycling;
           const transitSteps = route.directions.transit;
 
-          if (cyclingSteps.length > 0 && transitSteps.length > 0) {
+          if (walkingSteps.length > 0 && cyclingSteps.length > 0 && transitSteps.length > 0) {
+            const walkingStart = walkingSteps[0].start_location;
+            const walkingEnd = walkingSteps[walkingSteps.length - 1].end_location;
             const cyclingStart = cyclingSteps[0].start_location;
             const cyclingEnd = route.transitStartLocation;
             const transitEnd = transitSteps[transitSteps.length - 1].end_location;
 
-            if (cyclingStart && cyclingEnd && transitEnd) {
-              // First render cycling route
+            if (walkingStart && walkingEnd && cyclingStart && cyclingEnd && transitEnd) {
+              // First render walking route
+              const walkingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+                directionsService.route({
+                  origin: walkingStart,
+                  destination: walkingEnd,
+                  travelMode: google.maps.TravelMode.WALKING,
+                }, (result, status) => {
+                  if (status === 'OK' && result) {
+                    resolve(result);
+                  } else {
+                    reject(status);
+                  }
+                });
+              });
+
+              // Then render cycling route
               const cyclingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
                 directionsService.route({
                   origin: cyclingStart,
@@ -70,16 +88,7 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 });
               });
 
-              // Format cycling instructions with proper HTML
-              cyclingResult.routes[0].legs[0].steps.forEach(step => {
-                const formattedInstructions = step.instructions
-                  .replace(/<\/?b>/g, '') // Remove existing b tags
-                  .replace(/([A-Za-z0-9\s]+) on ([^<]+)/g, 'Head <b>$1</b> on <b>$2</b>') // Format street names
-                  .replace(/Restricted usage road/g, '<div style="font-size:0.9em">Restricted usage road</div>'); // Format restrictions
-                step.instructions = formattedInstructions;
-              });
-
-              // Then render transit route
+              // Finally render transit route
               const transitResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
                 directionsService.route({
                   origin: cyclingEnd,
@@ -97,22 +106,31 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
               // Create bounds that include all points
               const bounds = new google.maps.LatLngBounds();
               
-              // Add cycling route points to bounds
-              cyclingResult.routes[0].legs[0].steps.forEach(step => {
-                bounds.extend(step.start_location);
-                bounds.extend(step.end_location);
-              });
-
-              // Add transit route points to bounds
-              transitResult.routes[0].legs[0].steps.forEach(step => {
-                bounds.extend(step.start_location);
-                bounds.extend(step.end_location);
+              // Add all route points to bounds
+              [walkingResult, cyclingResult, transitResult].forEach(result => {
+                result.routes[0].legs[0].steps.forEach(step => {
+                  bounds.extend(step.start_location);
+                  bounds.extend(step.end_location);
+                });
               });
 
               // Clear any existing renderers
-              directionsRendererRef.current.setMap(null);
+              if (directionsRendererRef.current) {
+                directionsRendererRef.current.setMap(null);
+              }
 
-              // Render both routes with different colors
+              // Render walking route in gray
+              const walkingRenderer = new google.maps.DirectionsRenderer({
+                map: mapInstanceRef.current,
+                directions: walkingResult,
+                suppressMarkers: true,
+                polylineOptions: {
+                  strokeColor: "#757575", // Gray for walking
+                  strokeWeight: 5
+                }
+              });
+
+              // Render cycling route in green
               const cyclingRenderer = new google.maps.DirectionsRenderer({
                 map: mapInstanceRef.current,
                 directions: cyclingResult,
@@ -123,6 +141,7 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 }
               });
 
+              // Render transit route in blue
               const transitRenderer = new google.maps.DirectionsRenderer({
                 map: mapInstanceRef.current,
                 directions: transitResult,
@@ -133,26 +152,33 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 }
               });
 
-              // Add markers for start, transition point, and end
+              // Add markers for start, transition points, and end
               new google.maps.Marker({
-                position: cyclingStart,
+                position: walkingStart,
                 map: mapInstanceRef.current,
                 title: "Start",
                 label: "A"
               });
 
               new google.maps.Marker({
+                position: cyclingStart,
+                map: mapInstanceRef.current,
+                title: "Bike Start",
+                label: "B"
+              });
+
+              new google.maps.Marker({
                 position: cyclingEnd,
                 map: mapInstanceRef.current,
                 title: "Transit Start",
-                label: "B"
+                label: "C"
               });
 
               new google.maps.Marker({
                 position: transitEnd,
                 map: mapInstanceRef.current,
                 title: "End",
-                label: "C"
+                label: "D"
               });
 
               mapInstanceRef.current.fitBounds(bounds);
