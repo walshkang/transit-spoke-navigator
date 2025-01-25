@@ -40,13 +40,12 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
       const request: google.maps.places.TextSearchRequest = {
         query: query.trim(),
-        location: currentLocation
+        locationBias: currentLocation
           ? new window.google.maps.LatLng(
               currentLocation.latitude,
               currentLocation.longitude
             )
           : undefined,
-        radius: 50000, // 50km radius
       };
 
       console.log("Search request:", request);

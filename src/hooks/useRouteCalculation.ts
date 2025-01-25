@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SearchResult } from "@/types/location";
-import { Route } from "@/types/route";
+import { Route, RouteCalculationError, DirectionStep } from "@/types/route";
 import { useToast } from "@/components/ui/use-toast";
 import { findNearestStationWithBikes, findNearestStationWithDocks } from "@/utils/gbfsUtils";
 import { formatDirectionStep } from "@/utils/routeCalculations";
@@ -134,28 +134,30 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             });
 
             // Calculate durations correctly for each segment
-            const walkingMinutes = Math.round(
+            const initialWalkingMinutes = Math.round(
               walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60;
             const cyclingMinutes = Math.round(
               cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60;
-            const transitMinutes = Math.round(
-              remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60;
-
-            // Format steps with station info only where needed
-            const walkingSteps = walkToStationResponse.routes[0].legs[0].steps.map((step, index) => 
-              formatDirectionStep(step, index === 0 ? { bikes: startStation.status.num_bikes_available } : undefined)
-            );
             
-            const cyclingSteps = cyclingResponse.routes[0].legs[0].steps.map((step, index, array) => 
-              formatDirectionStep(step, index === array.length - 1 ? { docks: endStation.status.num_docks_available } : undefined)
+            // Calculate walking minutes from remaining transit steps
+            const remainingWalkingMinutes = Math.round(
+              remainingTransitResponse.routes[0].legs[0].steps
+                .filter(step => step.travel_mode === 'WALKING')
+                .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
             );
 
-            // Construct enhanced route
+            const transitMinutes = Math.round(
+              remainingTransitResponse.routes[0].legs[0].steps
+                .filter(step => step.travel_mode === 'TRANSIT')
+                .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+            );
+
+            // Round all minutes to nearest integer
             enhancedRoute = {
-              duration: walkingMinutes + cyclingMinutes + transitMinutes,
-              bikeMinutes: cyclingMinutes,
-              subwayMinutes: transitMinutes,
-              walkingMinutes,
+              duration: Math.round(initialWalkingMinutes + cyclingMinutes + transitMinutes + remainingWalkingMinutes),
+              bikeMinutes: Math.round(cyclingMinutes),
+              subwayMinutes: Math.round(transitMinutes),
+              walkingMinutes: Math.round(initialWalkingMinutes + remainingWalkingMinutes),
               startStation,
               endStation,
               transitStartLocation: new google.maps.LatLng(
@@ -163,8 +165,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
                 endStation.information.lon
               ),
               directions: {
-                walking: walkingSteps,
-                cycling: cyclingSteps,
+                walking: walkToStationResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step)),
+                cycling: cyclingResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step)),
                 transit: remainingTransitResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step))
               }
             };
