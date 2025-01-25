@@ -7,13 +7,14 @@ export const formatDirectionStep = (
 ): DirectionStep => {
   let instructions = DOMPurify.sanitize(step.instructions);
   
+  // Only add station info for walking to first station or last cycling step
   if (stationInfo) {
     const availability = [];
     if (typeof stationInfo.bikes === 'number') {
-      availability.push(`${stationInfo.bikes} bikes`);
+      availability.push(`${stationInfo.bikes} bikes available`);
     }
     if (typeof stationInfo.docks === 'number') {
-      availability.push(`${stationInfo.docks} docks`);
+      availability.push(`${stationInfo.docks} docks available`);
     }
     if (availability.length > 0) {
       instructions += ` [${availability.join(', ')}]`;

@@ -46,15 +46,18 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
 
   // Combine cycling and transit steps for enhanced routes
   const allSteps = originalRoute.bikeMinutes > 0 
-    ? [...originalRoute.directions.cycling, ...originalRoute.directions.transit]
+    ? [...originalRoute.directions.walking, ...originalRoute.directions.cycling, ...originalRoute.directions.transit]
     : originalRoute.directions.transit;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-xl">
-        <SheetTitle className="text-lg font-semibold mb-4">Route Details</SheetTitle>
-        <div className="h-full flex flex-col">
-          <div className="flex-1">
+      <SheetContent className="w-full sm:max-w-xl p-0">
+        <div className="h-full flex flex-col max-h-screen overflow-hidden">
+          <div className="p-4 border-b">
+            <SheetTitle className="text-lg font-semibold">Route Details</SheetTitle>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4">
             {!showMap && (
               <button 
                 onClick={() => setShowMap(true)} 
@@ -64,12 +67,15 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
               </button>
             )}
             {showMap && (
-              <RouteMap 
-                isVisible={showMap} 
-                onMapLoad={handleMapLoad}
-                route={originalRoute}
-              />
+              <div className="mb-4">
+                <RouteMap 
+                  isVisible={showMap} 
+                  onMapLoad={handleMapLoad}
+                  route={originalRoute}
+                />
+              </div>
             )}
+            
             <div className="flex items-center justify-center space-x-2 p-4 border-t border-b">
               <Clock className="h-5 w-5 text-gray-500" />
               <span className="text-lg font-medium">
@@ -110,14 +116,21 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
               </div>
             )}
 
-            <div className="mt-4 divide-y overflow-y-auto max-h-[300px]">
+            <div className="mt-4">
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left font-medium">
                   Step by Step Directions
                 </CollapsibleTrigger>
                 <CollapsibleContent className="bg-gray-50 rounded-md">
                   {allSteps.map((step, index) => (
-                    <StepDetails key={index} step={step} />
+                    <StepDetails 
+                      key={index} 
+                      step={step} 
+                      showStationInfo={
+                        (originalRoute.bikeMinutes > 0 && index === 0) || 
+                        (originalRoute.bikeMinutes > 0 && index === originalRoute.directions.cycling.length - 1)
+                      }
+                    />
                   ))}
                 </CollapsibleContent>
               </Collapsible>
