@@ -24,12 +24,19 @@ export interface Route {
   startStation?: StationData;
   endStation?: StationData;
   directions: {
-    transit: DirectionStep[];
+    walking: DirectionStep[];
     cycling: DirectionStep[];
+    transit: DirectionStep[];
   };
 }
 
 export interface RouteCalculationError {
-  type: 'LOCATION_ERROR' | 'CALCULATION_ERROR';
+  type: 'LOCATION_ERROR' | 'CALCULATION_ERROR' | 'NO_STATIONS_ERROR';
   message: string;
+}
+
+export interface GBFSCache {
+  data: StationData[];
+  timestamp: number;
+  ttl: number;
 }
