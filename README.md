@@ -1,110 +1,146 @@
-# Bike to Subway Navigator
+# Bike to Subway Navigator 🚲➡️🚇
 
 ## Overview
 
-Bike to Subway Navigator is a web application designed to optimize urban commutes by combining bike-sharing services with subway transportation. This tool calculates time-saving routes by replacing walking segments with Citi Bike rides, providing users with efficient navigation from their current location to their desired destination.
+**Bike to Subway Navigator** is an intelligent route planning tool that optimizes urban commutes by seamlessly combining bike-sharing services with public transit. The application calculates time-efficient routes that replace walking segments with Citi Bike rides, providing multimodal navigation from current location to destination.
 
-## Current Status
+![App Preview](https://via.placeholder.com/800x400.png?text=Route+Details+Interface)
 
-The project is in active development with several core features implemented:
-
-- Web application built using ReactJS and TailwindCSS
-- Supabase backend integration
-- Google Maps API integration for routing and navigation
-- User interface for location input and route display
+## Current Status ✅
 
 ### Implemented Features
+- [x] **Enhanced Multi-Modal Routing**
+  - Walking directions to bike stations
+  - Cycling routes between stations
+  - Integrated transit directions
+- [x] **Real-Time Station Data**
+  - Citi Bike availability integration (bikes/docks)
+  - GBFS feed parsing with auto-refresh
+- [x] **Interactive Mapping**
+  - Polylines for walking/biking/transit routes
+  - Step-by-step directions with station info
+- [x] **Accurate Time Calculations**
+  - Combined walking + biking + transit durations
+  - Time savings comparison between routes
+- [x] **Modern UI Components**
+  - Search with autocomplete
+  - Route cards with detailed breakdowns
+  - Collapsible direction steps
 
-- [x] Google Maps integration
-- [x] User location detection
-- [x] Destination search functionality
-- [x] Basic route calculation
+### In Development 🚧
+- [ ] User preference settings
+- [ ] Real-time transit updates
+- [ ] Advanced route optimization
+- [ ] Mobile app integration
 
-### In Progress
+## Technical Stack ⚙️
 
-- [ ] Enhanced routing tab
-- [ ] Directions display on map
-- [ ] Citi Bike station integration
-- [ ] Time-saving calculations
+### Core Technologies
+- **Frontend**: Next.js 14 (App Router), TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Maps**: Google Maps JavaScript API
+- **State Management**: React Context + Zustand
+- **Build**: Vite + SWC
 
-## Technical Stack
+### Key Integrations
+```mermaid
+graph LR
+A[Google Maps] --> B(Directions API)
+A --> C(Places API)
+D[Citi Bike] --> E(GBFS Feeds)
+D --> F(Station Status API)
+G[Supabase] --> H(User Auth)
+G --> I(Route History)
+```
 
-- Frontend: ReactJS, TypeScript
-- Styling: TailwindCSS, shadcn-ui
-- Backend: Supabase
-- Build Tool: Vite
-- Maps and Routing: Google Maps APIs
-- Bike-sharing Data: Citi Bike APIs
-- Code Assistance: Lovable, Bolt, Copilot, Perplexity
+## Key Features 🌟
 
-## Key Features
+### Smart Routing Engine
+- **Multi-Modal Combinations**  
+  `Walking → Citi Bike → Subway → Walking`
+- **Station Availability Filtering**
+  - Finds nearest bike station with available bikes
+  - Locates optimal dock station near transit entry
+- **Time Optimization**  
+  Auto-selects fastest combination of transportation modes
 
-1. **Real-time Bike Availability**: Utilizes Citi Bike APIs to fetch live data on bike availability at nearby stations.
-2. **Intelligent Routing**: Combines walking, biking, and subway options to create optimal routes.
-3. **Time-saving Calculations**: Estimates time saved by replacing walking segments with Citi Bike rides.
-4. **Interactive Map Interface**: Displays routes and bike stations on an interactive Google Map.
+### Interactive Experience
+- **Step-by-Step Directions**
+  ```tsx
+  <StepDetails 
+    mode={step.mode} 
+    station={step.station} 
+    duration={step.duration}
+  />
+  ```
+- **Visual Mapping**
+  - Color-coded route segments (blue=walk, green=bike, red=transit)
+  - Station markers with live availability
 
-## Setup and Development
+### Performance
+- Client-side caching of station data
+- Dynamic API loading for Google Maps
+- Abortable fetch requests for sequential searches
+
+## Development Setup 💻
 
 ### Requirements
-
-- Node.js (v14+)
-- Google Maps API key with access to:
+- Node.js v18+
+- Google Cloud API key with:
+  - Maps JavaScript API
   - Directions API
   - Places API
-  - Maps JavaScript API
-- Citi Bike API access
+- Citi Bike GBFS API access
 
 ### Installation
-
 ```bash
-# Clone the repository
-git clone [repository-url]
-
-# Navigate to the project directory
-cd bike-to-subway-navigator
+git clone https://github.com/your-repo/bike-to-subway.git
+cd bike-to-subway
 
 # Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys
+# Configure environment
+cp .env.example .env.local
+# Add your API keys
 
-# Start the development server
+# Start dev server
 npm run dev
 ```
 
-### Development Options
+### Scripts
+| Command | Description |
+|---------|-------------|
+| `dev` | Start development server |
+| `build` | Create production build |
+| `lint` | Run ESLint checks |
+| `typecheck` | Verify TypeScript types |
 
-1. **Use Lovable**: Visit the [Lovable Project](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) to start prompting. Changes made via Lovable are automatically committed to the repo.
+## Deployment 🚀
 
-2. **Use your preferred IDE**: Clone the repo and push changes. Pushed changes will be reflected in Lovable.
+### Static Export
+```bash
+bun run build
+bun run start
+```
 
-3. **Edit directly in GitHub**: Navigate to files, click "Edit", make changes, and commit.
+## Roadmap 🗺️
 
-4. **Use GitHub Codespaces**: Launch a new Codespace environment from the repository's main page.
+### Next Features
+1. Real-time station availability updates
+2. User preference profiles
+3. Route sharing capabilities
+4. Progressive Web App support
 
-## Deployment
+### Optimization Targets
+- Map rendering performance
+- Route calculation speed
+- Bundle size reduction
 
-For quick deployment, open [Lovable](https://lovable.dev/projects/6272fc80-3bdb-4f56-a362-5bd6c648e657) and click on Share -> Publish.
+## License 📄
+MIT License - See [LICENSE.TXT](/LICENSE.TXT) for details
 
-TBD on custom domain.
-
-## Next Steps
-
-1. Implement the enhanced routing tab
-2. Integrate Citi Bike station data into the routing algorithm
-3. Develop time-saving calculation logic
-4. Improve map visualization of routes and bike stations
-5. Implement user authentication and route saving features
-
-
-## License
-
-[MIT License] see /transit-spoke-navigator/LICENSE.TXT
-
-## Contact
-
-walsh kang
-wkang1281@gmail.com
+## Contact 📧
+**Walsh Kang**  
+[wkang1281@gmail.com](mailto:wkang1281@gmail.com)  
+[GitHub Profile](https://github.com/walshkang)
