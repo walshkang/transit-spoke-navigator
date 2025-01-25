@@ -82,6 +82,13 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           );
 
           if (startStation && endStation) {
+            // Get walking route to start station
+            const { result: walkingResponse } = await getDirections(
+              origin,
+              new google.maps.LatLng(startStation.information.lat, startStation.information.lon),
+              google.maps.TravelMode.WALKING
+            );
+
             // Get cycling route between stations
             const { result: cyclingResponse } = await getDirections(
               new google.maps.LatLng(startStation.information.lat, startStation.information.lon),
@@ -100,6 +107,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             
             enhancedRoute = {
               duration: Math.round(
+                (walkingResponse.routes[0].legs[0].duration?.value || 0) / 60 +
                 (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60 +
                 (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
               ),
@@ -107,19 +115,23 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
                 (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
               ),
               subwayMinutes: calculateMinutes(remainingTransitSteps, google.maps.TravelMode.TRANSIT),
-              walkingMinutes: calculateMinutes(remainingTransitSteps, google.maps.TravelMode.WALKING),
+              walkingMinutes: calculateMinutes(walkingResponse.routes[0].legs[0].steps, google.maps.TravelMode.WALKING),
               transitStartLocation,
+              startStation,
+              endStation,
               directions: {
-                transit: remainingTransitSteps.map(formatDirectionStep),
-                cycling: cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+                walking: walkingResponse.routes[0].legs[0].steps.map(step => 
+                  formatDirectionStep(step, { bikes: startStation.status.num_bikes_available })
+                ),
+                cycling: cyclingResponse.routes[0].legs[0].steps.map(step => 
+                  formatDirectionStep(step, { 
+                    bikes: startStation.status.num_bikes_available,
+                    docks: endStation.status.num_docks_available 
+                  })
+                ),
+                transit: remainingTransitSteps.map(formatDirectionStep)
               }
             };
-
-            // Add toast notification about available bikes
-            toast({
-              title: "Citibike Station Found",
-              description: `Found station "${startStation.information.name}" with ${startStation.status.num_bikes_available} bikes available`,
-            });
           }
         }
       }
@@ -133,8 +145,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         subwayMinutes: calculateMinutes(transitSteps, google.maps.TravelMode.TRANSIT),
         walkingMinutes: calculateMinutes(transitSteps, google.maps.TravelMode.WALKING),
         directions: {
-          transit: transitSteps.map(formatDirectionStep),
-          cycling: []
+          walking: transitSteps.filter(step => step.travel_mode === 'WALKING').map(formatDirectionStep),
+          cycling: [],
+          transit: transitSteps.filter(step => step.travel_mode === 'TRANSIT').map(formatDirectionStep)
         }
       };
 
@@ -157,8 +170,6 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     selectedResult,
     calculateRoutes,
     setSelectedResult,
-    setRoutes,
-    results: routes,
-    isLoading: isCalculatingRoute
+    setRoutes
   };
 };

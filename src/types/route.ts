@@ -1,4 +1,3 @@
-import { SearchResult } from "./location";
 import { StationData } from "./gbfs";
 
 export interface DirectionStep {
