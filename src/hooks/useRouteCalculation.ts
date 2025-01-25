@@ -129,7 +129,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
                     docks: endStation.status.num_docks_available 
                   })
                 ),
-                transit: remainingTransitSteps.map(formatDirectionStep)
+                transit: remainingTransitSteps.map(step => formatDirectionStep(step))
               }
             };
           }
@@ -145,9 +145,13 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         subwayMinutes: calculateMinutes(transitSteps, google.maps.TravelMode.TRANSIT),
         walkingMinutes: calculateMinutes(transitSteps, google.maps.TravelMode.WALKING),
         directions: {
-          walking: transitSteps.filter(step => step.travel_mode === 'WALKING').map(formatDirectionStep),
+          walking: transitSteps
+            .filter(step => step.travel_mode === 'WALKING')
+            .map(step => formatDirectionStep(step)),
           cycling: [],
-          transit: transitSteps.filter(step => step.travel_mode === 'TRANSIT').map(formatDirectionStep)
+          transit: transitSteps
+            .filter(step => step.travel_mode === 'TRANSIT')
+            .map(step => formatDirectionStep(step))
         }
       };
 
