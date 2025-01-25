@@ -133,15 +133,21 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               });
             });
 
-            // Calculate durations
+            // Calculate durations correctly for each segment
             const walkingMinutes = Math.round(
-              (walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60
-            );
+              walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60;
             const cyclingMinutes = Math.round(
-              (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
-            );
+              cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60;
             const transitMinutes = Math.round(
-              (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
+              remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60;
+
+            // Format steps with station info only where needed
+            const walkingSteps = walkToStationResponse.routes[0].legs[0].steps.map((step, index) => 
+              formatDirectionStep(step, index === 0 ? { bikes: startStation.status.num_bikes_available } : undefined)
+            );
+            
+            const cyclingSteps = cyclingResponse.routes[0].legs[0].steps.map((step, index, array) => 
+              formatDirectionStep(step, index === array.length - 1 ? { docks: endStation.status.num_docks_available } : undefined)
             );
 
             // Construct enhanced route
@@ -152,16 +158,13 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               walkingMinutes,
               startStation,
               endStation,
+              transitStartLocation: new google.maps.LatLng(
+                endStation.information.lat,
+                endStation.information.lon
+              ),
               directions: {
-                walking: walkToStationResponse.routes[0].legs[0].steps.map(step => 
-                  formatDirectionStep(step, { bikes: startStation.status.num_bikes_available })
-                ),
-                cycling: cyclingResponse.routes[0].legs[0].steps.map(step => 
-                  formatDirectionStep(step, { 
-                    bikes: startStation.status.num_bikes_available,
-                    docks: endStation.status.num_docks_available 
-                  })
-                ),
+                walking: walkingSteps,
+                cycling: cyclingSteps,
                 transit: remainingTransitResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step))
               }
             };
