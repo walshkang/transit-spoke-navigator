@@ -80,8 +80,12 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
               <Clock className="h-5 w-5 text-gray-500" />
               <span className="text-lg font-medium">
                 {originalRoute.bikeMinutes > 0 
-                  ? `${originalRoute.bikeMinutes + originalRoute.subwayMinutes} minutes total (${originalRoute.bikeMinutes} biking, ${originalRoute.subwayMinutes} transit)`
-                  : `${originalRoute.duration} minutes`
+                ? `${originalRoute.duration} minutes total (
+                    ${originalRoute.walkingMinutes} walking, 
+                    ${originalRoute.bikeMinutes} biking, 
+                    ${originalRoute.subwayMinutes} transit
+                  )`
+                : `${originalRoute.duration} minutes`
                 }
               </span>
             </div>
