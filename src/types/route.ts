@@ -14,6 +14,18 @@ export interface DirectionStep {
   };
 }
 
+export interface Station {
+  information: {
+    lat: number;
+    lon: number;
+    name: string;
+  };
+  status: {
+    num_bikes_available: number;
+    num_docks_available: number;
+  };
+}
+
 export interface Route {
   duration: number;
   bikeMinutes: number;

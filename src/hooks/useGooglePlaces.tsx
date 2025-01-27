@@ -21,7 +21,6 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
     setIsLoading(true);
     try {
-      // Check if we need to abort before starting
       if (signal?.aborted) {
         throw new DOMException('Aborted', 'AbortError');
       }
@@ -40,7 +39,7 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
       const request: google.maps.places.TextSearchRequest = {
         query: query.trim(),
-        locationBias: currentLocation
+        location: currentLocation
           ? new window.google.maps.LatLng(
               currentLocation.latitude,
               currentLocation.longitude
@@ -94,7 +93,6 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
 
       setResults(formattedResults);
     } catch (error) {
-      // Only show errors if not aborted
       if (error.name !== 'AbortError') {
         console.error("Search error:", error);
         toast({

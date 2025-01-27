@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
 import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";

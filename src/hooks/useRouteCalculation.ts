@@ -53,7 +53,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       const transitSteps = transitResponse.routes[0].legs[0].steps;
       let enhancedRoute: Route | undefined;
 
-      // Check first walking segment optimization (existing logic)
+      // Check if first step is a walk longer than 5 minutes
       const firstStep = transitSteps[0];
       if (
         transitSteps.length > 1 && 
@@ -62,12 +62,14 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         firstStep.duration.value > 300 &&
         firstStep.end_location
       ) {
+        // Find nearest bike station to user
         const startStation = await findNearestStationWithBikes(
           currentLocation.latitude,
           currentLocation.longitude
         );
 
         if (startStation) {
+          // Find nearest dock station to first transit stop
           const endStation = await findNearestStationWithDocks(
             firstStep.end_location.lat(),
             firstStep.end_location.lng()
@@ -131,153 +133,29 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               });
             });
 
-            // Calculate durations correctly for each segment
-            const initialWalkingMinutes = Math.round(
-              walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60;
+            // Calculate durations
+            const walkingMinutes = Math.round(
+              (walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60
+            );
             const cyclingMinutes = Math.round(
-              cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60;
-            
-            // Calculate walking minutes from remaining transit steps
-            const remainingWalkingMinutes = Math.round(
-              remainingTransitResponse.routes[0].legs[0].steps
-                .filter(step => step.travel_mode === 'WALKING')
-                .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-            );
-
-            const transitMinutes = Math.round(
-              remainingTransitResponse.routes[0].legs[0].steps
-                .filter(step => step.travel_mode === 'TRANSIT')
-                .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-            );
-
-            // Round all minutes to nearest integer
-            enhancedRoute = {
-              duration: Math.round(initialWalkingMinutes + cyclingMinutes + transitMinutes + remainingWalkingMinutes),
-              bikeMinutes: Math.round(cyclingMinutes),
-              subwayMinutes: Math.round(transitMinutes),
-              walkingMinutes: Math.round(initialWalkingMinutes + remainingWalkingMinutes),
-              startStation,
-              endStation,
-              transitStartLocation: new google.maps.LatLng(
-                endStation.information.lat,
-                endStation.information.lon
-              ),
-              directions: {
-                walking: walkToStationResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step)),
-                cycling: cyclingResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step)),
-                transit: remainingTransitResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step))
-              }
-            };
-          }
-        }
-      }
-
-      // Check last walking segment optimization
-      const lastStep = transitSteps[transitSteps.length - 1];
-      if (
-        lastStep.travel_mode === 'WALKING' &&
-        lastStep.duration &&
-        lastStep.duration.value > 300 &&
-        lastStep.start_location
-      ) {
-        const startStation = await findNearestStationWithBikes(
-          lastStep.start_location.lat(),
-          lastStep.start_location.lng()
-        );
-
-        if (startStation) {
-          const endStation = await findNearestStationWithDocks(
-            destinationLatLng.lat(),
-            destinationLatLng.lng()
-          );
-
-          if (endStation) {
-            // Calculate walking route to start station
-            const walkToStationResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-              directionsService.route({
-                origin: lastStep.start_location,
-                destination: new google.maps.LatLng(
-                  startStation.information.lat,
-                  startStation.information.lon
-                ),
-                travelMode: window.google.maps.TravelMode.WALKING,
-              }, (result, status) => {
-                if (status === window.google.maps.DirectionsStatus.OK && result) {
-                  resolve(result);
-                } else {
-                  reject(status);
-                }
-              });
-            });
-
-            // Calculate cycling route between stations
-            const cyclingResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-              directionsService.route({
-                origin: new google.maps.LatLng(
-                  startStation.information.lat,
-                  startStation.information.lon
-                ),
-                destination: new google.maps.LatLng(
-                  endStation.information.lat,
-                  endStation.information.lon
-                ),
-                travelMode: window.google.maps.TravelMode.BICYCLING,
-              }, (result, status) => {
-                if (status === window.google.maps.DirectionsStatus.OK && result) {
-                  resolve(result);
-                } else {
-                  reject(status);
-                }
-              });
-            });
-
-            // Calculate final walking segment
-            const finalWalkResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-              directionsService.route({
-                origin: new google.maps.LatLng(
-                  endStation.information.lat,
-                  endStation.information.lon
-                ),
-                destination: destinationLatLng,
-                travelMode: window.google.maps.TravelMode.WALKING,
-              }, (result, status) => {
-                if (status === window.google.maps.DirectionsStatus.OK && result) {
-                  resolve(result);
-                } else {
-                  reject(status);
-                }
-              });
-            });
-
-            // Update the transit steps array
-            const updatedTransitSteps = transitSteps.slice(0, -1); // Remove the last walking step
-            updatedTransitSteps.push(...walkToStationResponse.routes[0].legs[0].steps);
-            updatedTransitSteps.push(...cyclingResponse.routes[0].legs[0].steps);
-            updatedTransitSteps.push(...finalWalkResponse.routes[0].legs[0].steps);
-
-            // Calculate updated durations
-            const lastWalkingMinutes = Math.round(
-              (walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-              (finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
-            );
-            const lastCyclingMinutes = Math.round(
               (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
             );
+            const transitMinutes = Math.round(
+              (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
+            );
 
+            // Construct enhanced route
             enhancedRoute = {
-              ...enhancedRoute,
-              duration: Math.round(
-                (transitResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-                lastWalkingMinutes + lastCyclingMinutes
-              ),
-              bikeMinutes: (enhancedRoute?.bikeMinutes || 0) + lastCyclingMinutes,
-              walkingMinutes: (enhancedRoute?.walkingMinutes || 0) + lastWalkingMinutes,
-              lastBikeStartStation: startStation,
-              lastBikeEndStation: endStation,
+              duration: walkingMinutes + cyclingMinutes + transitMinutes,
+              bikeMinutes: cyclingMinutes,
+              subwayMinutes: transitMinutes,
+              walkingMinutes,
+              startStation,
+              endStation,
               directions: {
-                walking: [...(enhancedRoute?.directions.walking || [])],
-                cycling: [...(enhancedRoute?.directions.cycling || []), ...cyclingResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step))],
-                transit: updatedTransitSteps.map(step => formatDirectionStep(step))
+                walking: walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+                cycling: cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+                transit: remainingTransitResponse.routes[0].legs[0].steps.map(formatDirectionStep)
               }
             };
           }
