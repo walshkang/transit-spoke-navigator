@@ -41,12 +41,12 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     setSelectedResult(destination);
     
     try {
-      const directionsService = new window.google.maps.DirectionsService();
-      const origin = new window.google.maps.LatLng(
+      const directionsService = new google.maps.DirectionsService();
+      const origin = new google.maps.LatLng(
         currentLocation.latitude,
         currentLocation.longitude
       );
-      const destinationLatLng = new window.google.maps.LatLng(
+      const destinationLatLng = new google.maps.LatLng(
         destination.location.lat,
         destination.location.lng
       );
@@ -56,9 +56,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         directionsService.route({
           origin,
           destination: destinationLatLng,
-          travelMode: window.google.maps.TravelMode.TRANSIT,
+          travelMode: google.maps.TravelMode.TRANSIT,
         }, (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK && result) {
+          if (status === google.maps.DirectionsStatus.OK && result) {
             resolve(result);
           } else {
             reject(status);
@@ -69,13 +69,14 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       const transitSteps = transitResponse.routes[0].legs[0].steps;
       let enhancedRoute: Route | undefined;
 
-      // Check if first step is a walk longer than 400 meters (changed from 500)
+      // Check if first step is a walk longer than 400 meters
       const firstStep = transitSteps[0];
+      const lastStep = transitSteps[transitSteps.length - 1];
+      
       if (
         transitSteps.length > 1 && 
-        firstStep.travel_mode === 'WALKING' && 
-        firstStep.duration && 
-        firstStep.duration.value > 400 &&
+        ((firstStep.travel_mode === 'WALKING' && firstStep.duration && firstStep.duration.value > 400) ||
+        (lastStep.travel_mode === 'WALKING' && lastStep.duration && lastStep.duration.value > 400)) &&
         firstStep.end_location
       ) {
         // Find nearest bike station to user
