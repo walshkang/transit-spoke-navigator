@@ -22,6 +22,8 @@ export interface Route {
   transitStartLocation?: google.maps.LatLng;
   startStation?: StationData;
   endStation?: StationData;
+  lastBikeStartStation?: StationData;
+  lastBikeEndStation?: StationData;
   directions: {
     walking: DirectionStep[];
     cycling: DirectionStep[];
