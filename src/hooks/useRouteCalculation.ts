@@ -11,6 +11,14 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const { toast } = useToast();
 
+  const calculateTransitMinutes = (steps: google.maps.DirectionsStep[]): number => {
+    return Math.round(
+      steps
+        .filter(step => step.travel_mode === 'TRANSIT')
+        .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+    );
+  };
+
   const calculateRoutes = async (destination: SearchResult) => {
     if (!currentLocation) {
       toast({
@@ -140,8 +148,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             const cyclingMinutes = Math.round(
               (cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
             );
-            const transitMinutes = Math.round(
-              (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
+            const transitMinutes = calculateTransitMinutes(
+              remainingTransitResponse.routes[0].legs[0].steps
             );
 
             // Format steps with station info for the first and last steps
@@ -180,11 +188,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
         ),
         bikeMinutes: 0,
-        subwayMinutes: Math.round(
-          transitSteps
-            .filter(step => step.travel_mode === 'TRANSIT')
-            .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-        ),
+        subwayMinutes: calculateTransitMinutes(transitSteps),
         walkingMinutes: Math.round(
           transitSteps
             .filter(step => step.travel_mode === 'WALKING')
