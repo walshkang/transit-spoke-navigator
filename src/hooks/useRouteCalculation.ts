@@ -113,7 +113,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             // Calculate cycling route between stations
             const cyclingResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
               directionsService.route({
-                origin: new google.maps.LatLng(
+                origin: new google.google.maps.LatLng(
                   startStation.information.lat,
                   startStation.information.lon
                 ),
@@ -163,6 +163,23 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               remainingTransitResponse.routes[0].legs[0].steps
             );
 
+            // Format steps with station info for the first and last steps
+            const walkingSteps = walkToStationResponse.routes[0].legs[0].steps.map((step, index) => {
+              if (index === 0) {
+                return formatDirectionStep(step, { bikes: startStation.status.num_bikes_available });
+              }
+              return formatDirectionStep(step);
+            });
+
+            const cyclingSteps = cyclingResponse.routes[0].legs[0].steps.map((step, index, array) => {
+              if (index === array.length - 1) {
+                return formatDirectionStep(step, { docks: endStation.status.num_docks_available });
+              }
+              return formatDirectionStep(step);
+            });
+
+            const transitSteps = remainingTransitResponse.routes[0].legs[0].steps.map(step => formatDirectionStep(step));
+
             // Construct enhanced route with total walking time
             enhancedRoute = {
               duration: initialWalkingMinutes + cyclingMinutes + transitMinutes + finalWalkingMinutes,
@@ -172,9 +189,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               startStation,
               endStation,
               directions: {
-                walking: walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-                cycling: cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-                transit: remainingTransitResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+                walking: walkingSteps,
+                cycling: cyclingSteps,
+                transit: transitSteps
               }
             };
           }
@@ -188,15 +205,11 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         ),
         bikeMinutes: 0,
         subwayMinutes: calculateTransitMinutes(transitSteps),
-        walkingMinutes: Math.round(
-          transitSteps
-            .filter(step => step.travel_mode === 'WALKING')
-            .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-        ),
+        walkingMinutes: calculateWalkingMinutes(transitSteps),
         directions: {
           walking: [],
           cycling: [],
-          transit: transitSteps.map(formatDirectionStep)
+          transit: transitSteps.map(step => formatDirectionStep(step))
         }
       };
 
