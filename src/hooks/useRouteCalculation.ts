@@ -69,13 +69,13 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       const transitSteps = transitResponse.routes[0].legs[0].steps;
       let enhancedRoute: Route | undefined;
 
-      // Check if first step is a walk longer than 5 minutes
+      // Check if first step is a walk longer than 400 meters (changed from 500)
       const firstStep = transitSteps[0];
       if (
         transitSteps.length > 1 && 
         firstStep.travel_mode === 'WALKING' && 
         firstStep.duration && 
-        firstStep.duration.value > 300 &&
+        firstStep.duration.value > 400 &&
         firstStep.end_location
       ) {
         // Find nearest bike station to user
