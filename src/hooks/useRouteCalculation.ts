@@ -113,7 +113,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             // Calculate cycling route between stations
             const cyclingResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
               directionsService.route({
-                origin: new google.google.maps.LatLng(
+                origin: new google.maps.LatLng(
                   startStation.information.lat,
                   startStation.information.lon
                 ),
