@@ -144,6 +144,18 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               (remainingTransitResponse.routes[0].legs[0].duration?.value || 0) / 60
             );
 
+            // Format steps with station info for the first and last steps
+            const walkingSteps = walkToStationResponse.routes[0].legs[0].steps.map((step, index) => 
+              formatDirectionStep(step, index === 0 ? { bikes: startStation.status.num_bikes_available } : undefined)
+            );
+            const cyclingSteps = cyclingResponse.routes[0].legs[0].steps.map((step, index) => 
+              formatDirectionStep(step, index === cyclingResponse.routes[0].legs[0].steps.length - 1 ? 
+                { docks: endStation.status.num_docks_available } : undefined)
+            );
+            const transitSteps = remainingTransitResponse.routes[0].legs[0].steps.map(step => 
+              formatDirectionStep(step)
+            );
+
             // Construct enhanced route
             enhancedRoute = {
               duration: walkingMinutes + cyclingMinutes + transitMinutes,
@@ -153,9 +165,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               startStation,
               endStation,
               directions: {
-                walking: walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-                cycling: cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-                transit: remainingTransitResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+                walking: walkingSteps,
+                cycling: cyclingSteps,
+                transit: transitSteps
               }
             };
           }
@@ -181,7 +193,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         directions: {
           walking: [],
           cycling: [],
-          transit: transitSteps.map(formatDirectionStep)
+          transit: transitSteps.map(step => formatDirectionStep(step))
         }
       };
 
