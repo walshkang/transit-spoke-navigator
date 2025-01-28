@@ -11,22 +11,6 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const { toast } = useToast();
 
-  const calculateTransitMinutes = (steps: google.maps.DirectionsStep[]): number => {
-    return Math.round(
-      steps
-        .filter(step => step.travel_mode === 'TRANSIT')
-        .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-    );
-  };
-
-  const calculateWalkingMinutes = (steps: google.maps.DirectionsStep[]): number => {
-    return Math.round(
-      steps
-        .filter(step => step.travel_mode === 'WALKING')
-        .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
-    );
-  };
-
   const processInitialWalkingSegment = async (
     origin: google.maps.LatLng,
     firstStep: google.maps.DirectionsStep,
@@ -179,7 +163,6 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         destination.location.lng
       );
 
-      // Get initial transit route
       const transitResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
         directionsService.route({
           origin,
@@ -197,7 +180,6 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       const transitSteps = transitResponse.routes[0].legs[0].steps;
       let enhancedRoute: Route | undefined;
 
-      // Check for long walking segments
       const firstStep = transitSteps[0];
       const lastStep = transitSteps[transitSteps.length - 1];
       const lastTransitStep = transitSteps[transitSteps.length - 2];
@@ -210,40 +192,40 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
                               lastStep.duration && 
                               lastStep.duration.value > 400;
 
-      // Process initial walking segment if needed
       const initialSegment = hasLongInitialWalk 
         ? await processInitialWalkingSegment(origin, firstStep, directionsService)
         : null;
 
-      // Process final walking segment if needed
       const finalSegment = hasLongFinalWalk && lastTransitStep
         ? await processFinalWalkingSegment(lastTransitStep, destinationLatLng, directionsService)
         : null;
 
-      // If either segment was processed successfully, create enhanced route
       if (initialSegment || finalSegment) {
         let walkingSteps: google.maps.DirectionsStep[] = [];
         let cyclingSteps: google.maps.DirectionsStep[] = [];
-        let transitStepsFiltered: google.maps.DirectionsStep[] = [];
+        let transitStepsFiltered = transitSteps.filter(step => step.travel_mode === 'TRANSIT');
         let totalWalkingMinutes = 0;
         let totalCyclingMinutes = 0;
         let totalTransitMinutes = 0;
 
-        // Add initial segment if it exists
+        // Add initial segment steps if they exist
         if (initialSegment) {
           walkingSteps = [...initialSegment.walkToStationResponse.routes[0].legs[0].steps];
           cyclingSteps = [...initialSegment.cyclingResponse.routes[0].legs[0].steps];
-          totalWalkingMinutes += calculateWalkingMinutes(walkingSteps);
+          totalWalkingMinutes += Math.round(
+            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60
+          );
           totalCyclingMinutes += Math.round(
             (initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
         }
 
         // Add transit steps
-        transitStepsFiltered = transitSteps.filter(step => step.travel_mode === 'TRANSIT');
-        totalTransitMinutes = calculateTransitMinutes(transitStepsFiltered);
+        totalTransitMinutes = Math.round(
+          transitStepsFiltered.reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+        );
 
-        // Add final segment if it exists
+        // Add final segment steps if they exist
         if (finalSegment) {
           cyclingSteps = [...cyclingSteps, ...finalSegment.cyclingResponse.routes[0].legs[0].steps];
           walkingSteps = [...walkingSteps, ...finalSegment.finalWalkResponse.routes[0].legs[0].steps];
@@ -272,14 +254,21 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         };
       }
 
-      // Create original route (always from user's location)
       const originalRoute: Route = {
         duration: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
         ),
         bikeMinutes: 0,
-        subwayMinutes: calculateTransitMinutes(transitSteps),
-        walkingMinutes: calculateWalkingMinutes(transitSteps),
+        subwayMinutes: Math.round(
+          transitSteps
+            .filter(step => step.travel_mode === 'TRANSIT')
+            .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+        ),
+        walkingMinutes: Math.round(
+          transitSteps
+            .filter(step => step.travel_mode === 'WALKING')
+            .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
+        ),
         directions: {
           walking: [],
           cycling: [],
@@ -287,7 +276,6 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         }
       };
 
-      // Set routes (either both enhanced and original, or just original)
       if (enhancedRoute) {
         setRoutes([originalRoute, enhancedRoute]);
       } else {
