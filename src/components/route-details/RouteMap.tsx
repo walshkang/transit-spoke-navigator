@@ -51,7 +51,10 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
           const cyclingSteps = route.directions.cycling;
           const transitSteps = route.directions.transit;
 
-          if (walkingSteps.length > 0 && cyclingSteps.length > 0 && transitSteps.length > 0) {
+          if (walkingSteps.length > 0 && transitSteps.length > 0) {
+            // Set map to transit layer
+            mapInstanceRef.current.setMapTypeId('transit');
+
             // Render walking route in gray
             const walkingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
               directionsService.route({
@@ -67,20 +70,39 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
               });
             });
 
-            // Render cycling route in green
-            const cyclingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-              directionsService.route({
-                origin: cyclingSteps[0].start_location,
-                destination: cyclingSteps[cyclingSteps.length - 1].end_location,
-                travelMode: google.maps.TravelMode.BICYCLING,
-              }, (result, status) => {
-                if (status === 'OK' && result) {
-                  resolve(result);
-                } else {
-                  reject(status);
+            // Render cycling route in green (only if cycling steps exist)
+            if (cyclingSteps.length > 0) {
+              const cyclingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+                directionsService.route({
+                  origin: cyclingSteps[0].start_location,
+                  destination: cyclingSteps[cyclingSteps.length - 1].end_location,
+                  travelMode: google.maps.TravelMode.BICYCLING,
+                }, (result, status) => {
+                  if (status === 'OK' && result) {
+                    resolve(result);
+                  } else {
+                    reject(status);
+                  }
+                });
+              });
+
+              // Render cycling route in green
+              new google.maps.DirectionsRenderer({
+                map: mapInstanceRef.current,
+                directions: cyclingResult,
+                suppressMarkers: true,
+                polylineOptions: {
+                  strokeColor: "#4CAF50",
+                  strokeWeight: 5
                 }
               });
-            });
+
+              // Add cycling points to bounds
+              cyclingResult.routes[0].legs[0].steps.forEach(step => {
+                bounds.extend(step.start_location);
+                bounds.extend(step.end_location);
+              });
+            }
 
             // Render transit route in blue
             const transitResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
@@ -113,17 +135,6 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
               }
             });
 
-            // Render cycling route in green
-            new google.maps.DirectionsRenderer({
-              map: mapInstanceRef.current,
-              directions: cyclingResult,
-              suppressMarkers: true,
-              polylineOptions: {
-                strokeColor: "#4CAF50",
-                strokeWeight: 5
-              }
-            });
-
             // Render transit route in blue
             new google.maps.DirectionsRenderer({
               map: mapInstanceRef.current,
@@ -135,6 +146,14 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
               }
             });
 
+            // Add all points to bounds
+            [walkingResult, transitResult].forEach(result => {
+              result.routes[0].legs[0].steps.forEach(step => {
+                bounds.extend(step.start_location);
+                bounds.extend(step.end_location);
+              });
+            });
+
             // Add markers for key points
             new google.maps.Marker({
               position: walkingSteps[0].start_location,
@@ -143,150 +162,21 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
               label: "A"
             });
 
-            new google.maps.Marker({
-              position: walkingSteps[walkingSteps.length - 1].end_location,
-              map: mapInstanceRef.current,
-              title: "Bike Start",
-              label: "B"
-            });
-
-            new google.maps.Marker({
-              position: cyclingSteps[cyclingSteps.length - 1].end_location,
-              map: mapInstanceRef.current,
-              title: "Transit Start",
-              label: "C"
-            });
-
+            // Add final destination marker
             new google.maps.Marker({
               position: transitSteps[transitSteps.length - 1].end_location,
               map: mapInstanceRef.current,
               title: "End",
-              label: "D"
+              label: "B"
             });
 
-            // Add all points to bounds
-            [walkingResult, cyclingResult, transitResult].forEach(result => {
-              result.routes[0].legs[0].steps.forEach(step => {
-                bounds.extend(step.start_location);
-                bounds.extend(step.end_location);
-              });
+            // Fit bounds with padding
+            mapInstanceRef.current.fitBounds(bounds, {
+              top: 50,
+              right: 50,
+              bottom: 50,
+              left: 50
             });
-
-            // Render last segment optimization if present
-            if (route.lastBikeStartStation && route.lastBikeEndStation) {
-              const lastBikeStart = new google.maps.LatLng(
-                route.lastBikeStartStation.information.lat,
-                route.lastBikeStartStation.information.lon
-              );
-              const lastBikeEnd = new google.maps.LatLng(
-                route.lastBikeEndStation.information.lat,
-                route.lastBikeEndStation.information.lon
-              );
-
-              // Render walking to last bike station
-              const lastWalkToStationResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-                directionsService.route({
-                  origin: transitSteps[transitSteps.length - 2].end_location!, // Last transit stop
-                  destination: lastBikeStart,
-                  travelMode: google.maps.TravelMode.WALKING,
-                }, (result, status) => {
-                  if (status === 'OK' && result) {
-                    resolve(result);
-                  } else {
-                    reject(status);
-                  }
-                });
-              });
-
-              // Render last cycling segment
-              const lastCyclingResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-                directionsService.route({
-                  origin: lastBikeStart,
-                  destination: lastBikeEnd,
-                  travelMode: google.maps.TravelMode.BICYCLING,
-                }, (result, status) => {
-                  if (status === 'OK' && result) {
-                    resolve(result);
-                  } else {
-                    reject(status);
-                  }
-                });
-              });
-
-              // Render final walking segment
-              const finalWalkResult = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-                directionsService.route({
-                  origin: lastBikeEnd,
-                  destination: transitSteps[transitSteps.length - 1].end_location!,
-                  travelMode: google.maps.TravelMode.WALKING,
-                }, (result, status) => {
-                  if (status === 'OK' && result) {
-                    resolve(result);
-                  } else {
-                    reject(status);
-                  }
-                });
-              });
-
-              // Render last walking segment in gray
-              new google.maps.DirectionsRenderer({
-                map: mapInstanceRef.current,
-                directions: lastWalkToStationResult,
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: "#757575",
-                  strokeWeight: 5
-                }
-              });
-
-              // Render last cycling segment in green
-              new google.maps.DirectionsRenderer({
-                map: mapInstanceRef.current,
-                directions: lastCyclingResult,
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: "#4CAF50",
-                  strokeWeight: 5
-                }
-              });
-
-              // Render final walking segment in gray
-              new google.maps.DirectionsRenderer({
-                map: mapInstanceRef.current,
-                directions: finalWalkResult,
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: "#757575",
-                  strokeWeight: 5
-                }
-              });
-
-              // Add markers for last segment
-              new google.maps.Marker({
-                position: lastBikeStart,
-                map: mapInstanceRef.current,
-                title: "Last Bike Start",
-                label: "B2"
-              });
-
-              new google.maps.Marker({
-                position: lastBikeEnd,
-                map: mapInstanceRef.current,
-                title: "Last Bike End",
-                label: "B3"
-              });
-
-              // Extend bounds
-              [lastWalkToStationResult, lastCyclingResult, finalWalkResult].forEach(result => {
-                result.routes[0].legs[0].steps.forEach(step => {
-                  bounds.extend(step.start_location);
-                  bounds.extend(step.end_location);
-                });
-              });
-            }
-
-            // Fit map to show all route segments
-            mapInstanceRef.current.fitBounds(bounds);
           }
         } else {
           // Regular transit route
@@ -296,6 +186,9 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
             const destination = transitSteps[transitSteps.length - 1].end_location;
 
             if (origin && destination) {
+              // Set map to transit layer
+              mapInstanceRef.current.setMapTypeId('transit');
+
               const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
                 directionsService.route({
                   origin,
@@ -326,11 +219,19 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
                 }
               });
 
+              // Add all points to bounds
               result.routes[0].legs[0].steps.forEach(step => {
                 bounds.extend(step.start_location);
                 bounds.extend(step.end_location);
               });
-              mapInstanceRef.current.fitBounds(bounds);
+
+              // Fit bounds with padding
+              mapInstanceRef.current.fitBounds(bounds, {
+                top: 50,
+                right: 50,
+                bottom: 50,
+                left: 50
+              });
             }
           }
         }
