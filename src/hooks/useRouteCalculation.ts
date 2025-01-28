@@ -94,6 +94,23 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
 
     if (!endStation) return null;
 
+    const walkToStationResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+      directionsService.route({
+        origin: lastTransitStep.end_location,
+        destination: new google.maps.LatLng(
+          startStation.information.lat,
+          startStation.information.lon
+        ),
+        travelMode: google.maps.TravelMode.WALKING,
+      }, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK && result) {
+          resolve(result);
+        } else {
+          reject(status);
+        }
+      });
+    });
+
     const cyclingResponse = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
       directionsService.route({
         origin: new google.maps.LatLng(
@@ -120,7 +137,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           endStation.information.lat,
           endStation.information.lon
         ),
-        destination,
+        destination: destination,
         travelMode: google.maps.TravelMode.WALKING,
       }, (result, status) => {
         if (status === google.maps.DirectionsStatus.OK && result) {
@@ -132,6 +149,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     });
 
     return {
+      walkToStationResponse,
       cyclingResponse,
       finalWalkResponse,
       startStation,
@@ -192,13 +210,16 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
                               lastStep.duration && 
                               lastStep.duration.value > 400;
 
-      const initialSegment = hasLongInitialWalk 
-        ? await processInitialWalkingSegment(origin, firstStep, directionsService)
-        : null;
+      let initialSegment = null;
+      let finalSegment = null;
 
-      const finalSegment = hasLongFinalWalk && lastTransitStep
-        ? await processFinalWalkingSegment(lastTransitStep, destinationLatLng, directionsService)
-        : null;
+      if (hasLongInitialWalk) {
+        initialSegment = await processInitialWalkingSegment(origin, firstStep, directionsService);
+      }
+
+      if (hasLongFinalWalk && lastTransitStep) {
+        finalSegment = await processFinalWalkingSegment(lastTransitStep, destinationLatLng, directionsService);
+      }
 
       if (initialSegment || finalSegment) {
         let walkingSteps: google.maps.DirectionsStep[] = [];
@@ -227,13 +248,22 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
 
         // Add final segment steps if they exist
         if (finalSegment) {
-          cyclingSteps = [...cyclingSteps, ...finalSegment.cyclingResponse.routes[0].legs[0].steps];
-          walkingSteps = [...walkingSteps, ...finalSegment.finalWalkResponse.routes[0].legs[0].steps];
+          walkingSteps = [
+            ...walkingSteps,
+            ...finalSegment.walkToStationResponse.routes[0].legs[0].steps,
+            ...finalSegment.finalWalkResponse.routes[0].legs[0].steps
+          ];
+          cyclingSteps = [
+            ...cyclingSteps,
+            ...finalSegment.cyclingResponse.routes[0].legs[0].steps
+          ];
+          
+          totalWalkingMinutes += Math.round(
+            ((finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) +
+             (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0)) / 60
+          );
           totalCyclingMinutes += Math.round(
             (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
-          );
-          totalWalkingMinutes += Math.round(
-            (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
         }
 
