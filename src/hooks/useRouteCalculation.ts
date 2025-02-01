@@ -57,32 +57,29 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         );
 
         if (initialSegment && finalSegment) {
-          // Order steps correctly based on the journey sequence
+          // Order steps in the logical sequence of the journey:
+          // 1. Initial walking to first bike station
+          // 2. Cycling segment
+          // 3. Transit segment
+          // 4. Final walking segment
           const orderedSteps = {
-            walking: [
-              ...initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-              ...finalSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-              ...finalSegment.finalWalkResponse.routes[0].legs[0].steps.map(formatDirectionStep)
-            ],
-            cycling: [
-              ...initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-              ...finalSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep)
-            ],
+            // Only include initial walking steps to first bike station
+            walking: initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            // Include all cycling steps
+            cycling: initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            // Include all transit steps
             transit: transitSteps
               .filter(step => step.travel_mode === 'TRANSIT')
               .map(formatDirectionStep)
           };
 
-          // Calculate durations
+          // Calculate durations for each segment
           const walkingDuration = Math.round(
-            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-            (finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-            (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
+            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
 
           const cyclingDuration = Math.round(
-            ((initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) +
-             (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0)) / 60
+            (initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
 
           const transitDuration = Math.round(
