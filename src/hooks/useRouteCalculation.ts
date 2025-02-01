@@ -57,57 +57,51 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         );
 
         if (initialSegment && finalSegment) {
-          const walkingSteps = [
-            ...initialSegment.walkToStationResponse.routes[0].legs[0].steps,
-            ...finalSegment.walkToStationResponse.routes[0].legs[0].steps,
-            ...finalSegment.finalWalkResponse.routes[0].legs[0].steps
-          ];
+          // Order steps correctly based on the journey sequence
+          const orderedSteps = {
+            walking: [
+              ...initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+              ...finalSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+              ...finalSegment.finalWalkResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+            ],
+            cycling: [
+              ...initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+              ...finalSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+            ],
+            transit: transitSteps
+              .filter(step => step.travel_mode === 'TRANSIT')
+              .map(formatDirectionStep)
+          };
 
-          const cyclingSteps = [
-            ...initialSegment.cyclingResponse.routes[0].legs[0].steps,
-            ...finalSegment.cyclingResponse.routes[0].legs[0].steps
-          ];
+          // Calculate durations
+          const walkingDuration = Math.round(
+            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
+            (finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
+            (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
+          );
 
-          const transitStepsFiltered = transitSteps
-            .filter(step => step.travel_mode === 'TRANSIT')
-            .map(formatDirectionStep);
+          const cyclingDuration = Math.round(
+            ((initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) +
+             (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0)) / 60
+          );
+
+          const transitDuration = Math.round(
+            orderedSteps.transit.reduce((total, step) => {
+              const duration = parseInt(step.duration.split(' ')[0]);
+              return total + (isNaN(duration) ? 0 : duration);
+            }, 0)
+          );
 
           enhancedRoute = {
-            duration: Math.round(
-              (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-              (initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-              transitStepsFiltered.reduce((total, step) => {
-                const duration = parseInt(step.duration.split(' ')[0]);
-                return total + (isNaN(duration) ? 0 : duration);
-              }, 0) +
-              (finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-              (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60 +
-              (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
-            ),
-            bikeMinutes: Math.round(
-              ((initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) +
-               (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0)) / 60
-            ),
-            subwayMinutes: Math.round(
-              transitStepsFiltered.reduce((total, step) => {
-                const duration = parseInt(step.duration.split(' ')[0]);
-                return total + (isNaN(duration) ? 0 : duration);
-              }, 0)
-            ),
-            walkingMinutes: Math.round(
-              ((initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) +
-               (finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) +
-               (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0)) / 60
-            ),
+            duration: walkingDuration + cyclingDuration + transitDuration,
+            bikeMinutes: cyclingDuration,
+            subwayMinutes: transitDuration,
+            walkingMinutes: walkingDuration,
             startStation: initialSegment.startStation,
             endStation: initialSegment.endStation,
             lastBikeStartStation: finalSegment.startStation,
             lastBikeEndStation: finalSegment.endStation,
-            directions: {
-              walking: walkingSteps.map(formatDirectionStep),
-              cycling: cyclingSteps.map(formatDirectionStep),
-              transit: transitStepsFiltered
-            }
+            directions: orderedSteps
           };
         }
       }

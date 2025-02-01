@@ -8,6 +8,11 @@ export const formatDirectionStep = (
 ): DirectionStep => {
   let instructions = DOMPurify.sanitize(step.instructions);
   
+  // Ensure we have valid start and end locations
+  if (!step.start_location || !step.end_location) {
+    console.error('Missing location data in step:', step);
+  }
+  
   return {
     instructions,
     distance: step.distance?.text || '',
