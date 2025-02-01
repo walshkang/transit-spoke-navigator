@@ -8,6 +8,7 @@ export const useMapRenderer = (
 ) => {
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const renderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
+  const markersRef = useRef<google.maps.Marker[]>([]);
 
   useEffect(() => {
     if (!isVisible || !mapRef.current) return;
@@ -26,27 +27,32 @@ export const useMapRenderer = (
       // Set transit layer
       mapInstanceRef.current.setMapTypeId('transit');
 
-      // Clear existing renderers
+      // Clear existing renderers and markers
       renderersRef.current.forEach(renderer => renderer.setMap(null));
       renderersRef.current = [];
+      
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
 
       // Calculate bounds
       const bounds = new google.maps.LatLngBounds();
       bounds.extend(options.markers.start);
       bounds.extend(options.markers.end);
 
-      // Add markers
-      new google.maps.marker.AdvancedMarkerElement({
+      // Add markers using standard Marker class
+      const startMarker = new google.maps.Marker({
         map: mapInstanceRef.current,
         position: options.markers.start,
         title: "Start"
       });
 
-      new google.maps.marker.AdvancedMarkerElement({
+      const endMarker = new google.maps.Marker({
         map: mapInstanceRef.current,
         position: options.markers.end,
         title: "End"
       });
+
+      markersRef.current.push(startMarker, endMarker);
 
       // Render route segments
       options.segments.forEach(async segment => {
@@ -100,6 +106,9 @@ export const useMapRenderer = (
     initializeMap();
 
     return () => {
+      // Clean up markers and renderers
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
       renderersRef.current.forEach(renderer => renderer.setMap(null));
       renderersRef.current = [];
     };
