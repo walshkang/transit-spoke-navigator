@@ -18,59 +18,63 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
   if (route.bikeMinutes > 0) {
     // Enhanced route segments
     if (route.directions.walking.length > 0) {
-      const firstWalkingStep = route.directions.walking[0];
-      const lastWalkingStep = route.directions.walking[route.directions.walking.length - 1];
-      
-      if (firstWalkingStep.start_location && firstWalkingStep.end_location) {
-        segments.push({
-          start: firstWalkingStep.start_location,
-          end: firstWalkingStep.end_location,
-          mode: 'WALKING',
-          color: "#757575"
-        });
+      const walkingSteps = route.directions.walking;
+      for (let i = 0; i < walkingSteps.length; i++) {
+        const step = walkingSteps[i];
+        if (step.start_location && step.end_location) {
+          segments.push({
+            start: step.start_location,
+            end: step.end_location,
+            mode: 'WALKING',
+            color: "#757575"
+          });
+        }
       }
     }
 
     if (route.directions.cycling.length > 0) {
-      const firstCyclingStep = route.directions.cycling[0];
-      const lastCyclingStep = route.directions.cycling[route.directions.cycling.length - 1];
-      
-      if (firstCyclingStep.start_location && lastCyclingStep.end_location) {
-        segments.push({
-          start: firstCyclingStep.start_location,
-          end: lastCyclingStep.end_location,
-          mode: 'BICYCLING',
-          color: "#4CAF50"
-        });
+      const cyclingSteps = route.directions.cycling;
+      for (let i = 0; i < cyclingSteps.length; i++) {
+        const step = cyclingSteps[i];
+        if (step.start_location && step.end_location) {
+          segments.push({
+            start: step.start_location,
+            end: step.end_location,
+            mode: 'BICYCLING',
+            color: "#4CAF50"
+          });
+        }
       }
     }
 
     if (route.directions.transit.length > 0) {
-      const firstTransitStep = route.directions.transit[0];
-      const lastTransitStep = route.directions.transit[route.directions.transit.length - 1];
-      
-      if (firstTransitStep.start_location && lastTransitStep.end_location) {
-        segments.push({
-          start: firstTransitStep.start_location,
-          end: lastTransitStep.end_location,
-          mode: 'TRANSIT',
-          color: "#2196F3"
-        });
+      const transitSteps = route.directions.transit;
+      for (let i = 0; i < transitSteps.length; i++) {
+        const step = transitSteps[i];
+        if (step.start_location && step.end_location) {
+          segments.push({
+            start: step.start_location,
+            end: step.end_location,
+            mode: 'TRANSIT',
+            color: "#2196F3"
+          });
+        }
       }
     }
   } else {
     // Regular transit route
     if (route.directions.transit.length > 0) {
-      const firstStep = route.directions.transit[0];
-      const lastStep = route.directions.transit[route.directions.transit.length - 1];
-      
-      if (firstStep.start_location && lastStep.end_location) {
-        segments.push({
-          start: firstStep.start_location,
-          end: lastStep.end_location,
-          mode: 'TRANSIT',
-          color: "#2196F3"
-        });
+      const transitSteps = route.directions.transit;
+      for (let i = 0; i < transitSteps.length; i++) {
+        const step = transitSteps[i];
+        if (step.start_location && step.end_location) {
+          segments.push({
+            start: step.start_location,
+            end: step.end_location,
+            mode: 'TRANSIT',
+            color: "#2196F3"
+          });
+        }
       }
     }
   }
@@ -81,13 +85,18 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
   const endLocation = route.directions.walking[route.directions.walking.length - 1]?.end_location || 
                      route.directions.transit[route.directions.transit.length - 1]?.end_location;
 
+  if (!startLocation || !endLocation) {
+    console.error('Invalid start or end location');
+    return null;
+  }
+
   const map = useMapRenderer(
     mapRef,
     {
       segments,
       markers: {
-        start: startLocation!,
-        end: endLocation!
+        start: startLocation,
+        end: endLocation
       }
     },
     isVisible
@@ -103,6 +112,7 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
       ref={mapRef}
       style={{ height: '400px', width: '100%' }}
       className="bg-gray-100 rounded-md mb-4"
+      aria-label="Route map"
     />
   );
 };
