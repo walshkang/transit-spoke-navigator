@@ -85,17 +85,17 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         google.maps.TravelMode.TRANSIT
       );
 
-      const transitSteps = transitResponse.routes[0].legs[0].steps;
+      const initialTransitSteps = transitResponse.routes[0].legs[0].steps;
       let enhancedRoute: Route | undefined;
 
       // Check for long walking segments
-      const firstStep = transitSteps[0];
-      const lastStep = transitSteps[transitSteps.length - 1];
+      const firstStep = initialTransitSteps[0];
+      const lastStep = initialTransitSteps[initialTransitSteps.length - 1];
       
       if (firstStep.duration && firstStep.duration.value > 300) {
         const initialSegment = await processInitialSegment(origin, firstStep);
         const finalSegment = await processFinalSegment(
-          formatDirectionStep(transitSteps[transitSteps.length - 2]),
+          formatDirectionStep(initialTransitSteps[initialTransitSteps.length - 2]),
           destinationLatLng
         );
 
@@ -104,7 +104,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           const allSteps = [
             ...initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
             ...initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-            ...transitSteps.filter(step => step.travel_mode === 'TRANSIT').map(formatDirectionStep),
+            ...initialTransitSteps.filter(step => step.travel_mode === google.maps.TravelMode.TRANSIT).map(formatDirectionStep),
             ...finalSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
             ...finalSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
             ...finalSegment.finalWalkResponse.routes[0].legs[0].steps.map(formatDirectionStep)
@@ -157,7 +157,7 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
       }
 
       // Create original route with geographically ordered steps
-      const originalSteps = transitSteps.map(formatDirectionStep);
+      const originalSteps = initialTransitSteps.map(formatDirectionStep);
       const orderedOriginalSteps = orderStepsGeographically(originalSteps);
 
       const originalRoute: Route = {
@@ -166,13 +166,13 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         ),
         bikeMinutes: 0,
         subwayMinutes: Math.round(
-          transitSteps
-            .filter(step => step.travel_mode === 'TRANSIT')
+          initialTransitSteps
+            .filter(step => step.travel_mode === google.maps.TravelMode.TRANSIT)
             .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
         ),
         walkingMinutes: Math.round(
-          transitSteps
-            .filter(step => step.travel_mode === 'WALKING')
+          initialTransitSteps
+            .filter(step => step.travel_mode === google.maps.TravelMode.WALKING)
             .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
         ),
         directions: {
