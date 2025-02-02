@@ -10,6 +10,7 @@ import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,6 +21,7 @@ const Index = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [currentSearch, setCurrentSearch] = useState<SearchResult | null>(null);
+  const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
 
   const { 
     results, 
@@ -38,17 +40,40 @@ const Index = () => {
   } = useRouteCalculation(currentLocation);
 
   useEffect(() => {
-    if (apiKey) {
-      getLocation();
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      document.head.appendChild(script);
+    const fetchMapsApiKey = async () => {
+      try {
+        const { data: { GOOGLE_MAPS_API_KEY } } = await supabase.functions.invoke('get-maps-key');
+        if (GOOGLE_MAPS_API_KEY) {
+          setMapsApiKey(GOOGLE_MAPS_API_KEY);
+          const script = document.createElement("script");
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+          script.async = true;
+          document.head.appendChild(script);
+          
+          // Get location after Maps API is loaded
+          script.onload = () => {
+            getLocation();
+          };
+        }
+      } catch (error) {
+        console.error('Error fetching Maps API key:', error);
+        setError({
+          title: "API Key Error",
+          message: "Failed to load Google Maps API key",
+        });
+      }
+    };
 
-      return () => {
-        document.head.removeChild(script);
-      };
+    if (apiKey) {
+      fetchMapsApiKey();
     }
+
+    return () => {
+      const script = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (script) {
+        document.head.removeChild(script);
+      }
+    };
   }, [apiKey]);
 
   const getLocation = async () => {
@@ -115,7 +140,6 @@ const Index = () => {
 
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
       if (abortController) {
         abortController.abort();
       }
