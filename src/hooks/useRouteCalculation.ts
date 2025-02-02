@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SearchResult } from "@/types/location";
-import { Route } from "@/types/route";
+import { Route, DirectionStep } from "@/types/route";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDirectionStep } from "@/utils/routeCalculations";
 import { useRouteSegments } from "./useRouteSegments";
@@ -11,6 +11,17 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const { toast } = useToast();
   const { calculateSegment, processInitialSegment, processFinalSegment } = useRouteSegments();
+
+  const orderStepsGeographically = (steps: DirectionStep[]): DirectionStep[] => {
+    return steps.sort((a, b) => {
+      if (!a.start_location || !b.start_location) return 0;
+      // Sort based on latitude (north to south)
+      const latDiff = b.start_location.lat() - a.start_location.lat();
+      if (Math.abs(latDiff) > 0.0001) return latDiff;
+      // If latitudes are very close, sort based on longitude (west to east)
+      return b.start_location.lng() - a.start_location.lng();
+    });
+  };
 
   const calculateRoutes = async (destination: SearchResult) => {
     if (!currentLocation) {
@@ -57,36 +68,38 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         );
 
         if (initialSegment && finalSegment) {
-          // Order steps in the logical sequence of the journey:
-          // 1. Initial walking to first bike station
-          // 2. Cycling segment
-          // 3. Transit segment
-          // 4. Final walking segment
-          const orderedSteps = {
-            // Only include initial walking steps to first bike station
-            walking: initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-            // Include all cycling steps
-            cycling: initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
-            // Include all transit steps
-            transit: transitSteps
-              .filter(step => step.travel_mode === 'TRANSIT')
-              .map(formatDirectionStep)
-          };
+          // Collect all steps with their coordinates
+          const allSteps = [
+            ...initialSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            ...initialSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            ...transitSteps.filter(step => step.travel_mode === 'TRANSIT').map(formatDirectionStep),
+            ...finalSegment.walkToStationResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            ...finalSegment.cyclingResponse.routes[0].legs[0].steps.map(formatDirectionStep),
+            ...finalSegment.finalWalkResponse.routes[0].legs[0].steps.map(formatDirectionStep)
+          ];
 
-          // Calculate durations for each segment
+          // Order steps geographically
+          const orderedSteps = orderStepsGeographically(allSteps);
+
+          // Calculate durations
           const walkingDuration = Math.round(
-            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60
+            (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
+            (finalSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
+            (finalSegment.finalWalkResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
 
           const cyclingDuration = Math.round(
-            (initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
+            (initialSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60 +
+            (finalSegment.cyclingResponse.routes[0].legs[0].duration?.value || 0) / 60
           );
 
           const transitDuration = Math.round(
-            orderedSteps.transit.reduce((total, step) => {
-              const duration = parseInt(step.duration.split(' ')[0]);
-              return total + (isNaN(duration) ? 0 : duration);
-            }, 0)
+            transitSteps
+              .filter(step => step.travel_mode === 'TRANSIT')
+              .reduce((total, step) => {
+                const duration = parseInt(step.duration?.text?.split(' ')[0] || '0');
+                return total + (isNaN(duration) ? 0 : duration);
+              }, 0)
           );
 
           enhancedRoute = {
@@ -98,12 +111,19 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             endStation: initialSegment.endStation,
             lastBikeStartStation: finalSegment.startStation,
             lastBikeEndStation: finalSegment.endStation,
-            directions: orderedSteps
+            directions: {
+              walking: orderedSteps.filter(step => step.mode === 'walking'),
+              cycling: orderedSteps.filter(step => step.mode === 'bicycling'),
+              transit: orderedSteps.filter(step => step.mode === 'transit')
+            }
           };
         }
       }
 
-      // Create original route
+      // Create original route with geographically ordered steps
+      const originalSteps = transitSteps.map(formatDirectionStep);
+      const orderedOriginalSteps = orderStepsGeographically(originalSteps);
+
       const originalRoute: Route = {
         duration: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
@@ -120,9 +140,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             .reduce((total, step) => total + (step.duration?.value || 0), 0) / 60
         ),
         directions: {
-          walking: [],
+          walking: orderedOriginalSteps.filter(step => step.mode === 'walking'),
           cycling: [],
-          transit: transitSteps.map(formatDirectionStep)
+          transit: orderedOriginalSteps.filter(step => step.mode === 'transit')
         }
       };
 
