@@ -13,14 +13,46 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
   const { calculateSegment, processInitialSegment, processFinalSegment } = useRouteSegments();
 
   const orderStepsGeographically = (steps: DirectionStep[]): DirectionStep[] => {
-    return steps.sort((a, b) => {
-      if (!a.start_location || !b.start_location) return 0;
-      // Sort based on latitude (north to south)
-      const latDiff = b.start_location.lat() - a.start_location.lat();
-      if (Math.abs(latDiff) > 0.0001) return latDiff;
-      // If latitudes are very close, sort based on longitude (west to east)
-      return b.start_location.lng() - a.start_location.lng();
+    // First, create a map of steps by their start locations
+    const stepsByStartLocation = new Map<string, DirectionStep>();
+    const endLocationToStep = new Map<string, DirectionStep>();
+    
+    steps.forEach(step => {
+      if (!step.start_location || !step.end_location) return;
+      
+      const startKey = `${step.start_location.lat()},${step.start_location.lng()}`;
+      const endKey = `${step.end_location.lat()},${step.end_location.lng()}`;
+      
+      stepsByStartLocation.set(startKey, step);
+      endLocationToStep.set(endKey, step);
     });
+
+    // Find the first step (one that starts at origin)
+    const orderedSteps: DirectionStep[] = [];
+    let currentStep = steps.find(step => {
+      if (!step.start_location || !currentLocation) return false;
+      const latDiff = Math.abs(step.start_location.lat() - currentLocation.latitude);
+      const lngDiff = Math.abs(step.start_location.lng() - currentLocation.longitude);
+      return latDiff < 0.0001 && lngDiff < 0.0001;
+    });
+
+    // Build the ordered list by following the path
+    while (currentStep && orderedSteps.length < steps.length) {
+      orderedSteps.push(currentStep);
+      
+      if (!currentStep.end_location) break;
+      
+      const nextKey = `${currentStep.end_location.lat()},${currentStep.end_location.lng()}`;
+      currentStep = stepsByStartLocation.get(nextKey);
+      
+      // Break if we can't find the next step to prevent infinite loops
+      if (!currentStep && orderedSteps.length < steps.length) {
+        console.error('Could not find next step in sequence');
+        break;
+      }
+    }
+
+    return orderedSteps;
   };
 
   const calculateRoutes = async (destination: SearchResult) => {
@@ -81,6 +113,11 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           // Order steps geographically
           const orderedSteps = orderStepsGeographically(allSteps);
 
+          // Separate ordered steps by mode
+          const walkingSteps = orderedSteps.filter(step => step.mode === 'walking');
+          const cyclingSteps = orderedSteps.filter(step => step.mode === 'bicycling');
+          const transitSteps = orderedSteps.filter(step => step.mode === 'transit');
+
           // Calculate durations
           const walkingDuration = Math.round(
             (initialSegment.walkToStationResponse.routes[0].legs[0].duration?.value || 0) / 60 +
@@ -95,9 +132,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
 
           const transitDuration = Math.round(
             transitSteps
-              .filter(step => step.travel_mode === 'TRANSIT')
               .reduce((total, step) => {
-                const duration = parseInt(step.duration?.text?.split(' ')[0] || '0');
+                const duration = parseInt(step.duration?.split(' ')[0] || '0');
                 return total + (isNaN(duration) ? 0 : duration);
               }, 0)
           );
@@ -112,9 +148,9 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
             lastBikeStartStation: finalSegment.startStation,
             lastBikeEndStation: finalSegment.endStation,
             directions: {
-              walking: orderedSteps.filter(step => step.mode === 'walking'),
-              cycling: orderedSteps.filter(step => step.mode === 'bicycling'),
-              transit: orderedSteps.filter(step => step.mode === 'transit')
+              walking: walkingSteps,
+              cycling: cyclingSteps,
+              transit: transitSteps
             }
           };
         }
