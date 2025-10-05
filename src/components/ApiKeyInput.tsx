@@ -13,15 +13,8 @@ const ApiKeyInput = ({ onSubmit }: ApiKeyInputProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid API key",
-        variant: "destructive",
-      });
-      return;
-    }
-    onSubmit(apiKey);
+    // Allow empty key to use backend fallback
+    onSubmit(apiKey.trim());
   };
 
   return (
@@ -30,7 +23,10 @@ const ApiKeyInput = ({ onSubmit }: ApiKeyInputProps) => {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-semibold">Welcome to Spoke to Subway</h1>
           <p className="text-gray-600">
-            Please enter your Google Maps API key to continue
+            Enter your own Google Maps API key (optional)
+          </p>
+          <p className="text-sm text-gray-500">
+            Leave blank to use the default key
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -40,13 +40,26 @@ const Index = () => {
   } = useRouteCalculation(currentLocation);
 
   useEffect(() => {
-    const fetchMapsApiKey = async () => {
-      try {
-        const { data: { GOOGLE_MAPS_API_KEY } } = await supabase.functions.invoke('get-maps-key');
-        if (GOOGLE_MAPS_API_KEY) {
-          setMapsApiKey(GOOGLE_MAPS_API_KEY);
+    const loadMapsApi = async () => {
+      let keyToUse = apiKey;
+
+      // If no user-provided key, try to fetch from backend as fallback
+      if (!apiKey) {
+        try {
+          const { data } = await supabase.functions.invoke('get-maps-key');
+          if (data?.GOOGLE_MAPS_API_KEY) {
+            keyToUse = data.GOOGLE_MAPS_API_KEY;
+          }
+        } catch (error) {
+          console.error('Error fetching fallback Maps API key:', error);
+        }
+      }
+
+      if (keyToUse) {
+        try {
+          setMapsApiKey(keyToUse);
           const script = document.createElement("script");
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${keyToUse}&libraries=places`;
           script.async = true;
           document.head.appendChild(script);
           
@@ -54,19 +67,17 @@ const Index = () => {
           script.onload = () => {
             getLocation();
           };
+        } catch (error) {
+          console.error('Error loading Maps API:', error);
+          setError({
+            title: "API Key Error",
+            message: "Failed to load Google Maps API",
+          });
         }
-      } catch (error) {
-        console.error('Error fetching Maps API key:', error);
-        setError({
-          title: "API Key Error",
-          message: "Failed to load Google Maps API key",
-        });
       }
     };
 
-    if (apiKey) {
-      fetchMapsApiKey();
-    }
+    loadMapsApi();
 
     return () => {
       const script = document.querySelector('script[src*="maps.googleapis.com"]');
@@ -146,7 +157,10 @@ const Index = () => {
     };
   }, [abortController]);
 
-  if (!apiKey) {
+  // Show API key input only if both user key and backend key are missing
+  const showApiKeyInput = !apiKey && !mapsApiKey;
+
+  if (showApiKeyInput) {
     return <ApiKeyInput onSubmit={handleApiKeySubmit} />;
   }
 
