@@ -50,9 +50,11 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
       ? [...originalRoute.directions.walking, ...originalRoute.directions.cycling, ...originalRoute.directions.transit]
       : originalRoute.directions.transit);
 
+  console.log('Total steps to render:', allSteps.length);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="sticky top-0 z-20 glass-strong p-4 border-b border-glass-border/30">
           <DialogTitle className="text-xl font-semibold flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
@@ -88,7 +90,7 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
           </div>
         </DialogHeader>
         
-        <div className="overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {/* Map Section */}
           {showMap && (
             <GlossyCard className="overflow-hidden">
