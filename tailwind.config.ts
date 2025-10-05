@@ -45,6 +45,12 @@ export default {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))'
         },
+        tertiary: {
+          aqua: 'hsl(var(--tertiary-aqua))',
+          green: 'hsl(var(--tertiary-green))',
+          'aqua-light': 'hsl(var(--tertiary-aqua-light))',
+          'green-light': 'hsl(var(--tertiary-green-light))'
+        },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))'

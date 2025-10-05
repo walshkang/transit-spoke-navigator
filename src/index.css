@@ -33,6 +33,12 @@
     --accent: 185 75% 60%;
     --accent-foreground: 0 0% 100%;
     
+    /* Tertiary colors - Frutiger Aero palette */
+    --tertiary-aqua: 190 100% 50%; /* #00D4FF */
+    --tertiary-green: 122 39% 49%; /* #4CAF50 */
+    --tertiary-aqua-light: 190 100% 70%;
+    --tertiary-green-light: 122 39% 69%;
+    
     /* Destructive */
     --destructive: 0 75% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -77,6 +83,12 @@
     
     --accent: 185 75% 55%;
     --accent-foreground: 0 0% 100%;
+    
+    /* Tertiary colors - Dark mode */
+    --tertiary-aqua: 190 100% 55%;
+    --tertiary-green: 122 39% 54%;
+    --tertiary-aqua-light: 190 100% 65%;
+    --tertiary-green-light: 122 39% 64%;
     
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -159,9 +171,13 @@
                 0 4px 12px hsl(var(--foreground) / 0.12);
   }
   
-  /* Smooth transitions */
+  /* Smooth transitions with breakbeat timing (160ms) */
   .transition-aero {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-aero-slow {
+    transition: all 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   /* Glossy button effect */
