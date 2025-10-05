@@ -161,8 +161,8 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
                 <span className="text-xs text-muted-foreground font-normal">{allSteps.length} steps</span>
               </GlossyCardTitle>
             </GlossyCardHeader>
-            <GlossyCardContent>
-              <div className="space-y-1">
+            <GlossyCardContent className="p-0">
+              <div className="divide-y divide-border">
                 {allSteps.map((step, index) => (
                   <StepDetails 
                     key={index} 
