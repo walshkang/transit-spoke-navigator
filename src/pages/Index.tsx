@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
+import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
@@ -175,8 +176,8 @@ const Index = () => {
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl opacity-50 animate-pulse-glow" />
             <img 
-              src="/placeholder.svg" 
-              alt="Transit Explorer" 
+              src={logo} 
+              alt="Transit Navigator" 
               className="w-40 h-40 relative z-10 drop-shadow-2xl"
             />
           </div>
