@@ -5,14 +5,16 @@ import { GlossyCard, GlossyCardContent, GlossyCardHeader, GlossyCardTitle } from
 import { Route } from "@/types/route";
 import RouteMap from "@/components/route-details/RouteMap";
 import StepDetails from "@/components/route-details/StepDetails";
+import ReasoningPanel from "@/components/ReasoningPanel";
 
 interface RouteDetailsViewProps {
   isOpen: boolean;
   onClose: () => void;
   originalRoute: Route;
+  intent?: any;
 }
 
-const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewProps) => {
+const RouteDetailsView = ({ isOpen, onClose, originalRoute, intent }: RouteDetailsViewProps) => {
   const [showMap, setShowMap] = useState(true);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
@@ -103,6 +105,9 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
               </div>
             </GlossyCard>
           )}
+
+          {/* AI Reasoning Panel */}
+          <ReasoningPanel route={originalRoute} intent={intent} />
 
           {/* Bike Stations */}
           {originalRoute.startStation && (

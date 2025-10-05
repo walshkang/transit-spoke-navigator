@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.parse-route-intent]
 verify_jwt = false
+
+[functions.generate-reasoning]
+verify_jwt = false

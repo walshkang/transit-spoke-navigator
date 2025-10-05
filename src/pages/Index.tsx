@@ -268,6 +268,7 @@ const Index = () => {
             isOpen={isRouteDetailsOpen}
             onClose={() => setIsRouteDetailsOpen(false)}
             originalRoute={selectedRoute}
+            intent={intent}
           />
         )}
       </div>
