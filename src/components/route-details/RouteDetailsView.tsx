@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { Clock, Bike, Train, Footprints, X, Navigation } from "lucide-react";
+import { Clock, Bike, Train, Footprints, Navigation } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { GlossyCard, GlossyCardContent, GlossyCardHeader, GlossyCardTitle } from "@/components/ui/glossy-card";
-import { Button } from "@/components/ui/button";
 import { Route } from "@/types/route";
 import RouteMap from "@/components/route-details/RouteMap";
 import StepDetails from "@/components/route-details/StepDetails";
@@ -157,26 +155,26 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
 
           {/* Step-by-Step Directions */}
           <GlossyCard>
-            <Collapsible defaultOpen>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-aero rounded-xl">
-                <span className="font-semibold text-base">Step-by-Step Directions</span>
-                <span className="text-xs text-muted-foreground">{allSteps.length} steps</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="px-2 pb-2">
-                <div className="space-y-1">
-                  {allSteps.map((step, index) => (
-                    <StepDetails 
-                      key={index} 
-                      step={step} 
-                      showStationInfo={
-                        (originalRoute.bikeMinutes > 0 && index === 0) || 
-                        (originalRoute.bikeMinutes > 0 && index === originalRoute.directions.cycling.length - 1)
-                      }
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+            <GlossyCardHeader>
+              <GlossyCardTitle className="flex items-center justify-between text-base">
+                <span>Step-by-Step Directions</span>
+                <span className="text-xs text-muted-foreground font-normal">{allSteps.length} steps</span>
+              </GlossyCardTitle>
+            </GlossyCardHeader>
+            <GlossyCardContent>
+              <div className="space-y-1">
+                {allSteps.map((step, index) => (
+                  <StepDetails 
+                    key={index} 
+                    step={step} 
+                    showStationInfo={
+                      (originalRoute.bikeMinutes > 0 && index === 0) || 
+                      (originalRoute.bikeMinutes > 0 && index === originalRoute.directions.cycling.length - 1)
+                    }
+                  />
+                ))}
+              </div>
+            </GlossyCardContent>
           </GlossyCard>
         </div>
       </DialogContent>
