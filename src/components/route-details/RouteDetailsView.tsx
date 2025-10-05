@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Clock, Bike, Train, Footprints, Navigation } from "lucide-react";
+import { Clock, Bike, Train, Footprints, Navigation, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { GlossyCard, GlossyCardContent, GlossyCardHeader, GlossyCardTitle } from "@/components/ui/glossy-card";
 import { Route } from "@/types/route";
 import RouteMap from "@/components/route-details/RouteMap";
@@ -58,12 +59,22 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute, intent }: RouteDetai
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="sticky top-0 z-20 glass-strong p-4 border-b border-glass-border/30">
-          <DialogTitle className="text-xl font-semibold flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Navigation className="h-5 w-5 text-primary" />
-            </div>
-            Route Overview
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-semibold flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Navigation className="h-5 w-5 text-primary" />
+              </div>
+              Route Overview
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           
           {/* Quick Stats */}
           <div className="flex gap-3 mt-3 flex-wrap">
