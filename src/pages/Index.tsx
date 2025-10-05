@@ -210,7 +210,7 @@ const Index = () => {
             />
           </div>
           <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            Transit Spoke Navigator
+            last mile: get to the subway faster
           </h1>
           <p className="text-muted-foreground text-center text-sm">
             Discover your perfect route
