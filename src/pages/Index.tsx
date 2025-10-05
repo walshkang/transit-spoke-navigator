@@ -3,7 +3,7 @@ import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
 import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
-import { loadImageFromUrl, removeBackground } from "@/utils/backgroundRemoval";
+
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
@@ -52,23 +52,6 @@ const Index = () => {
     intent
   } = useNaturalLanguageSearch();
 
-  useEffect(() => {
-    const processLogo = async () => {
-      try {
-        console.log('Processing logo to remove background...');
-        const img = await loadImageFromUrl(logo);
-        const blob = await removeBackground(img);
-        const url = URL.createObjectURL(blob);
-        setProcessedLogo(url);
-        console.log('Logo background removed successfully');
-      } catch (error) {
-        console.error('Error processing logo:', error);
-        // Keep original logo if processing fails
-      }
-    };
-
-    processLogo();
-  }, []);
 
   useEffect(() => {
     const loadMapsApi = async () => {
@@ -226,7 +209,7 @@ const Index = () => {
             <img 
               src={processedLogo} 
               alt="Transit Navigator" 
-              className="w-40 h-40 relative z-10 drop-shadow-2xl"
+              className="w-40 h-40 relative z-10"
             />
           </div>
           <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
