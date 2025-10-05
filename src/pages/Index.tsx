@@ -3,7 +3,6 @@ import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
 import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
-
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
@@ -15,7 +14,6 @@ import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
 import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { supabase } from "@/integrations/supabase/client";
-
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentLocation, setCurrentLocation] = useState<GeolocationCoordinates | null>(null);
@@ -28,14 +26,12 @@ const Index = () => {
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
   const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
-
-  const { 
-    results, 
-    isLoading, 
+  const {
+    results,
+    isLoading,
     searchPlaces,
     setResults
   } = useGooglePlaces(currentLocation);
-
   const {
     routes,
     isCalculatingRoute,
@@ -44,15 +40,12 @@ const Index = () => {
     setRoutes,
     setSelectedResult
   } = useRouteCalculation(currentLocation);
-
   const {
     parseIntent,
     clearIntent,
     isParsingIntent,
     intent
   } = useNaturalLanguageSearch();
-
-
   useEffect(() => {
     const loadMapsApi = async () => {
       let keyToUse = apiKey;
@@ -60,7 +53,9 @@ const Index = () => {
       // If no user-provided key, try to fetch from backend as fallback
       if (!apiKey) {
         try {
-          const { data } = await supabase.functions.invoke('get-maps-key');
+          const {
+            data
+          } = await supabase.functions.invoke('get-maps-key');
           if (data?.GOOGLE_MAPS_API_KEY) {
             keyToUse = data.GOOGLE_MAPS_API_KEY;
           }
@@ -68,7 +63,6 @@ const Index = () => {
           console.error('Error fetching fallback Maps API key:', error);
         }
       }
-
       if (keyToUse) {
         try {
           setMapsApiKey(keyToUse);
@@ -76,7 +70,7 @@ const Index = () => {
           script.src = `https://maps.googleapis.com/maps/api/js?key=${keyToUse}&libraries=places`;
           script.async = true;
           document.head.appendChild(script);
-          
+
           // Get location after Maps API is loaded
           script.onload = () => {
             getLocation();
@@ -85,14 +79,12 @@ const Index = () => {
           console.error('Error loading Maps API:', error);
           setError({
             title: "API Key Error",
-            message: "Failed to load Google Maps API",
+            message: "Failed to load Google Maps API"
           });
         }
       }
     };
-
     loadMapsApi();
-
     return () => {
       const script = document.querySelector('script[src*="maps.googleapis.com"]');
       if (script) {
@@ -100,7 +92,6 @@ const Index = () => {
       }
     };
   }, [apiKey]);
-
   const getLocation = async () => {
     try {
       const position = await getCurrentPosition();
@@ -108,11 +99,10 @@ const Index = () => {
     } catch (error) {
       setError({
         title: "Location Services Required",
-        message: "Please enable location services to use this feature.",
+        message: "Please enable location services to use this feature."
       });
     }
   };
-
   const handleSearchSubmit = async () => {
     if (!searchQuery.trim()) return;
 
@@ -120,10 +110,8 @@ const Index = () => {
     if (abortController) {
       abortController.abort();
     }
-
     const newAbortController = new AbortController();
     setAbortController(newAbortController);
-
     try {
       if (naturalLanguageMode) {
         // Parse natural language query
@@ -145,7 +133,6 @@ const Index = () => {
       }
     }
   };
-
   const handleResetSearch = () => {
     // Clear all search-related state
     if (abortController) {
@@ -159,28 +146,23 @@ const Index = () => {
     setAbortController(null);
     clearIntent();
   };
-
   const handleToggleNaturalLanguage = () => {
     setNaturalLanguageMode(!naturalLanguageMode);
     if (intent) {
       clearIntent();
     }
   };
-
   const handleResultSelect = (result: SearchResult) => {
     setCurrentSearch(result);
     calculateRoutes(result);
   };
-
   const handleRouteSelect = (route: any) => {
     setSelectedRoute(route);
     setIsRouteDetailsOpen(true);
   };
-
   const handleApiKeySubmit = (key: string) => {
     setApiKey(key);
   };
-
   useEffect(() => {
     return () => {
       if (abortController) {
@@ -191,92 +173,40 @@ const Index = () => {
 
   // Show API key input only if both user key and backend key are missing
   const showApiKeyInput = !apiKey && !mapsApiKey;
-
   if (showApiKeyInput) {
     return <ApiKeyInput onSubmit={handleApiKeySubmit} />;
   }
-
-  return (
-    <div className="min-h-screen gradient-aero-subtle relative overflow-hidden">
+  return <div className="min-h-screen gradient-aero-subtle relative overflow-hidden">
       {/* Decorative gradient orbs */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{
+      animationDelay: '2s'
+    }} />
       
       <div className="container max-w-md mx-auto p-6 relative z-10">
         <div className="flex flex-col items-center mb-12 mt-8">
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl opacity-50 animate-pulse-glow" />
-            <img 
-              src={processedLogo} 
-              alt="Transit Navigator" 
-              className="w-40 h-40 relative z-10"
-            />
+            <img src={processedLogo} alt="Transit Navigator" className="w-40 h-40 relative z-10" />
           </div>
           <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             last mile: get to the subway faster
           </h1>
-          <p className="text-muted-foreground text-center text-sm">
-            Discover your perfect route
-          </p>
+          <p className="text-center text-gray-600 font-thin text-base">discover your perfect route</p>
         </div>
         
-        <SearchBar
-          placeholder="Where to?"
-          value={searchQuery}
-          onChange={setSearchQuery}
-          onSearch={handleSearchSubmit}
-          showReset={!!currentSearch || searchQuery.length > 0}
-          onReset={handleResetSearch}
-          naturalLanguageMode={naturalLanguageMode}
-          onToggleNaturalLanguage={handleToggleNaturalLanguage}
-          isParsingIntent={isParsingIntent}
-        />
+        <SearchBar placeholder="Where to?" value={searchQuery} onChange={setSearchQuery} onSearch={handleSearchSubmit} showReset={!!currentSearch || searchQuery.length > 0} onReset={handleResetSearch} naturalLanguageMode={naturalLanguageMode} onToggleNaturalLanguage={handleToggleNaturalLanguage} isParsingIntent={isParsingIntent} />
 
-        {intent && (
-          <div className="mt-4">
-            <IntentDisplay 
-              intent={intent} 
-              onDismiss={clearIntent}
-            />
-          </div>
-        )}
+        {intent && <div className="mt-4">
+            <IntentDisplay intent={intent} onDismiss={clearIntent} />
+          </div>}
 
-        {selectedResult && routes.length > 0 ? (
-          <RouteResults
-            selectedResult={selectedResult}
-            routes={routes}
-            isCalculatingRoute={isCalculatingRoute}
-            onRouteSelect={handleRouteSelect}
-            onNewSearch={handleResetSearch}
-          />
-        ) : (
-          <SearchResults
-            results={results}
-            isLoading={isLoading}
-            onResultSelect={handleResultSelect}
-            onNewSearch={handleResetSearch}
-            currentSelection={currentSearch}
-          />
-        )}
+        {selectedResult && routes.length > 0 ? <RouteResults selectedResult={selectedResult} routes={routes} isCalculatingRoute={isCalculatingRoute} onRouteSelect={handleRouteSelect} onNewSearch={handleResetSearch} /> : <SearchResults results={results} isLoading={isLoading} onResultSelect={handleResultSelect} onNewSearch={handleResetSearch} currentSelection={currentSearch} />}
 
-        <ErrorAlert
-          isOpen={error !== null}
-          title={error?.title || "Error"}
-          message={error?.message || "An error occurred"}
-          onClose={() => setError(null)}
-        />
+        <ErrorAlert isOpen={error !== null} title={error?.title || "Error"} message={error?.message || "An error occurred"} onClose={() => setError(null)} />
 
-        {selectedRoute && (
-          <RouteDetailsView
-            isOpen={isRouteDetailsOpen}
-            onClose={() => setIsRouteDetailsOpen(false)}
-            originalRoute={selectedRoute}
-            intent={intent}
-          />
-        )}
+        {selectedRoute && <RouteDetailsView isOpen={isRouteDetailsOpen} onClose={() => setIsRouteDetailsOpen(false)} originalRoute={selectedRoute} intent={intent} />}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
