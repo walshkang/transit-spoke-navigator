@@ -3,6 +3,7 @@ import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
 import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
+import { loadImageFromUrl, removeBackground } from "@/utils/backgroundRemoval";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
@@ -26,6 +27,7 @@ const Index = () => {
   const [currentSearch, setCurrentSearch] = useState<SearchResult | null>(null);
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
   const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
+  const [processedLogo, setProcessedLogo] = useState<string>(logo);
 
   const { 
     results, 
@@ -49,6 +51,24 @@ const Index = () => {
     isParsingIntent,
     intent
   } = useNaturalLanguageSearch();
+
+  useEffect(() => {
+    const processLogo = async () => {
+      try {
+        console.log('Processing logo to remove background...');
+        const img = await loadImageFromUrl(logo);
+        const blob = await removeBackground(img);
+        const url = URL.createObjectURL(blob);
+        setProcessedLogo(url);
+        console.log('Logo background removed successfully');
+      } catch (error) {
+        console.error('Error processing logo:', error);
+        // Keep original logo if processing fails
+      }
+    };
+
+    processLogo();
+  }, []);
 
   useEffect(() => {
     const loadMapsApi = async () => {
@@ -204,7 +224,7 @@ const Index = () => {
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl opacity-50 animate-pulse-glow" />
             <img 
-              src={logo} 
+              src={processedLogo} 
               alt="Transit Navigator" 
               className="w-40 h-40 relative z-10 drop-shadow-2xl"
             />
