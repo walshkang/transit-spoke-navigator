@@ -165,18 +165,27 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-ios-background">
-      <div className="container max-w-md mx-auto p-4">
-        <div className="flex flex-col items-center mb-8">
-          <img 
-            src="/placeholder.svg" 
-            alt="Bicycle illustration" 
-            className="w-32 h-32 mb-4"
-            style={{ filter: 'var(--tw-brightness)' }}
-          />
-          <h1 className="text-2xl font-semibold mb-6 text-center">
-            Spoke to Subway
+    <div className="min-h-screen gradient-aero-subtle relative overflow-hidden">
+      {/* Decorative gradient orbs */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      
+      <div className="container max-w-md mx-auto p-6 relative z-10">
+        <div className="flex flex-col items-center mb-12 mt-8">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl opacity-50 animate-pulse-glow" />
+            <img 
+              src="/placeholder.svg" 
+              alt="Transit Explorer" 
+              className="w-40 h-40 relative z-10 drop-shadow-2xl"
+            />
+          </div>
+          <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+            Transit Spoke Navigator
           </h1>
+          <p className="text-muted-foreground text-center text-sm">
+            Discover your perfect route
+          </p>
         </div>
         
         <SearchBar

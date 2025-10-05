@@ -26,30 +26,33 @@ const SearchResults = ({
   }
 
   return (
-    <div className="mt-6 space-y-4">
+    <div className="mt-8 space-y-4">
       {results.map((result) => (
         <div
           key={result.id}
-          className={`bg-white rounded-lg shadow-sm p-4 space-y-2 cursor-pointer hover:bg-gray-50 ${
-            currentSelection?.id === result.id ? 'ring-2 ring-ios-blue' : ''
+          className={`glass p-5 rounded-2xl space-y-2 cursor-pointer transition-aero hover:shadow-glow hover:scale-[1.02] ${
+            currentSelection?.id === result.id ? 'ring-2 ring-primary shadow-glow' : 'shadow-aero'
           }`}
           onClick={() => onResultSelect(result)}
         >
-          <h3 className="font-medium text-gray-900">{result.name}</h3>
-          <p className="text-gray-500 text-sm">{result.address}</p>
+          <h3 className="font-semibold text-lg">{result.name}</h3>
+          <p className="text-muted-foreground text-sm">{result.address}</p>
           {result.distance !== undefined && (
-            <p className="text-gray-400 text-sm">
-              {result.distance} km away
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <p className="text-accent text-sm font-medium">
+                {result.distance} km away
+              </p>
+            </div>
           )}
         </div>
       ))}
       
       {results.length > 0 && (
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-6">
           <Button
             variant="ghost"
-            className="w-full text-ios-blue hover:bg-ios-blue/10"
+            className="w-full rounded-xl py-6 hover:bg-primary/10 hover:text-primary transition-aero"
             onClick={onNewSearch}
           >
             Start New Search
