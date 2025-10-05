@@ -7,10 +7,12 @@ import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
 import ApiKeyInput from "@/components/ApiKeyInput";
+import IntentDisplay from "@/components/IntentDisplay";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
+import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
@@ -23,6 +25,7 @@ const Index = () => {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [currentSearch, setCurrentSearch] = useState<SearchResult | null>(null);
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
+  const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
 
   const { 
     results, 
@@ -39,6 +42,13 @@ const Index = () => {
     setRoutes,
     setSelectedResult
   } = useRouteCalculation(currentLocation);
+
+  const {
+    parseIntent,
+    clearIntent,
+    isParsingIntent,
+    intent
+  } = useNaturalLanguageSearch();
 
   useEffect(() => {
     const loadMapsApi = async () => {
@@ -112,7 +122,17 @@ const Index = () => {
     setAbortController(newAbortController);
 
     try {
-      await searchPlaces(searchQuery, newAbortController.signal);
+      if (naturalLanguageMode) {
+        // Parse natural language query
+        const parsedIntent = await parseIntent(searchQuery);
+        if (parsedIntent) {
+          // Use the destination from parsed intent
+          await searchPlaces(parsedIntent.destination, newAbortController.signal);
+        }
+      } else {
+        // Regular search
+        await searchPlaces(searchQuery, newAbortController.signal);
+      }
     } catch (error) {
       if (error.name !== 'AbortError') {
         setError({
@@ -134,6 +154,14 @@ const Index = () => {
     setSelectedResult(null);
     setRoutes([]);
     setAbortController(null);
+    clearIntent();
+  };
+
+  const handleToggleNaturalLanguage = () => {
+    setNaturalLanguageMode(!naturalLanguageMode);
+    if (intent) {
+      clearIntent();
+    }
   };
 
   const handleResultSelect = (result: SearchResult) => {
@@ -196,7 +224,19 @@ const Index = () => {
           onSearch={handleSearchSubmit}
           showReset={!!currentSearch || searchQuery.length > 0}
           onReset={handleResetSearch}
+          naturalLanguageMode={naturalLanguageMode}
+          onToggleNaturalLanguage={handleToggleNaturalLanguage}
+          isParsingIntent={isParsingIntent}
         />
+
+        {intent && (
+          <div className="mt-4">
+            <IntentDisplay 
+              intent={intent} 
+              onDismiss={clearIntent}
+            />
+          </div>
+        )}
 
         {selectedResult && routes.length > 0 ? (
           <RouteResults

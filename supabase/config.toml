@@ -1,1 +1,7 @@
 project_id = "fszrcbiuogwlbmvtyktr"
+
+[functions.get-maps-key]
+verify_jwt = false
+
+[functions.parse-route-intent]
+verify_jwt = false
