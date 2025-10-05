@@ -7,13 +7,14 @@ import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
 import ApiKeyInput from "@/components/ApiKeyInput";
+import AIKeyDialog from "@/components/AIKeyDialog";
 import IntentDisplay from "@/components/IntentDisplay";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
 import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
-import { supabase } from "@/integrations/supabase/client";
+import { apiKeyManager } from "@/utils/apiKeyManager";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentLocation, setCurrentLocation] = useState<GeolocationCoordinates | null>(null);
@@ -44,47 +45,33 @@ const Index = () => {
     parseIntent,
     clearIntent,
     isParsingIntent,
-    intent
+    intent,
+    needsAIKey,
+    setNeedsAIKey
   } = useNaturalLanguageSearch();
   useEffect(() => {
-    const loadMapsApi = async () => {
-      let keyToUse = apiKey;
+    if (apiKey) {
+      const keyToUse = apiKey;
+      setMapsApiKey(keyToUse);
+      apiKeyManager.setGoogleMapsKey(keyToUse);
+      
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${keyToUse}&libraries=places`;
+      script.async = true;
+      document.head.appendChild(script);
 
-      // If no user-provided key, try to fetch from backend as fallback
-      if (!apiKey) {
-        try {
-          const {
-            data
-          } = await supabase.functions.invoke('get-maps-key');
-          if (data?.GOOGLE_MAPS_API_KEY) {
-            keyToUse = data.GOOGLE_MAPS_API_KEY;
-          }
-        } catch (error) {
-          console.error('Error fetching fallback Maps API key:', error);
-        }
-      }
-      if (keyToUse) {
-        try {
-          setMapsApiKey(keyToUse);
-          const script = document.createElement("script");
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${keyToUse}&libraries=places`;
-          script.async = true;
-          document.head.appendChild(script);
-
-          // Get location after Maps API is loaded
-          script.onload = () => {
-            getLocation();
-          };
-        } catch (error) {
-          console.error('Error loading Maps API:', error);
-          setError({
-            title: "API Key Error",
-            message: "Failed to load Google Maps API"
-          });
-        }
-      }
-    };
-    loadMapsApi();
+      script.onload = () => {
+        getLocation();
+      };
+      
+      script.onerror = () => {
+        setError({
+          title: "API Key Error",
+          message: "Failed to load Google Maps API. Please check your API key."
+        });
+      };
+    }
+    
     return () => {
       const script = document.querySelector('script[src*="maps.googleapis.com"]');
       if (script) {
@@ -161,7 +148,13 @@ const Index = () => {
     setIsRouteDetailsOpen(true);
   };
   const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
+    if (key.trim()) {
+      setApiKey(key.trim());
+    }
+  };
+  
+  const handleAIKeySuccess = () => {
+    setNeedsAIKey(false);
   };
   useEffect(() => {
     return () => {
@@ -171,9 +164,8 @@ const Index = () => {
     };
   }, [abortController]);
 
-  // Show API key input only if both user key and backend key are missing
-  const showApiKeyInput = !apiKey && !mapsApiKey;
-  if (showApiKeyInput) {
+  // Always show API key input if no key is set
+  if (!apiKey) {
     return <ApiKeyInput onSubmit={handleApiKeySubmit} />;
   }
   return <div className="min-h-screen gradient-aero-subtle relative overflow-hidden">
@@ -204,6 +196,12 @@ const Index = () => {
         {selectedResult && routes.length > 0 ? <RouteResults selectedResult={selectedResult} routes={routes} isCalculatingRoute={isCalculatingRoute} onRouteSelect={handleRouteSelect} onNewSearch={handleResetSearch} /> : <SearchResults results={results} isLoading={isLoading} onResultSelect={handleResultSelect} onNewSearch={handleResetSearch} currentSelection={currentSearch} />}
 
         <ErrorAlert isOpen={error !== null} title={error?.title || "Error"} message={error?.message || "An error occurred"} onClose={() => setError(null)} />
+
+        <AIKeyDialog 
+          isOpen={needsAIKey} 
+          onClose={() => setNeedsAIKey(false)}
+          onSuccess={handleAIKeySuccess}
+        />
 
         {selectedRoute && <RouteDetailsView isOpen={isRouteDetailsOpen} onClose={() => setIsRouteDetailsOpen(false)} originalRoute={selectedRoute} intent={intent} />}
       </div>

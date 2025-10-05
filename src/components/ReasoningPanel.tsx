@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Lightbulb, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { GlossyCard } from "./ui/glossy-card";
 import { Badge } from "./ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "./ui/skeleton";
+import { generateRouteReasoning } from "@/utils/aiService";
+import AIKeyDialog from "@/components/AIKeyDialog";
+import { toast } from "@/hooks/use-toast";
 
 interface RouteReasoning {
   summary: string;
   keyPoints: string[];
   tradeoffs: Array<{
-    aspect: "time" | "safety" | "scenery" | "complexity";
+    aspect: string;
     explanation: string;
   }>;
   highlights: string[];
@@ -21,17 +23,19 @@ interface ReasoningPanelProps {
   intent?: any;
 }
 
-const ASPECT_CONFIG = {
+const ASPECT_CONFIG: Record<string, { icon: string; label: string }> = {
   time: { icon: "⏱️", label: "Time Optimization" },
   safety: { icon: "🛡️", label: "Safety Priority" },
   scenery: { icon: "🌿", label: "Scenic Route" },
-  complexity: { icon: "🎯", label: "Route Simplicity" }
+  complexity: { icon: "🎯", label: "Route Simplicity" },
+  cost: { icon: "💰", label: "Cost Efficiency" }
 };
 
 const ReasoningPanel = ({ route, intent }: ReasoningPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [reasoning, setReasoning] = useState<RouteReasoning | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [needsAIKey, setNeedsAIKey] = useState(false);
 
   useEffect(() => {
     if (isExpanded && !reasoning && !isLoading) {
@@ -42,26 +46,41 @@ const ReasoningPanel = ({ route, intent }: ReasoningPanelProps) => {
   const generateReasoning = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-reasoning', {
-        body: { route, intent }
-      });
-
-      if (error) {
-        console.error("Error generating reasoning:", error);
+      const generated = await generateRouteReasoning(route, intent);
+      setReasoning(generated);
+    } catch (error: any) {
+      console.error("Error generating reasoning:", error);
+      
+      if (error.message === 'AI_KEY_REQUIRED') {
+        setNeedsAIKey(true);
         return;
       }
-
-      setReasoning(data as RouteReasoning);
-    } catch (error) {
-      console.error("Error calling generate-reasoning:", error);
+      
+      toast({
+        title: "AI Error",
+        description: error.message || "Failed to generate route reasoning.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleAIKeySuccess = () => {
+    setNeedsAIKey(false);
+    generateReasoning();
+  };
+
   return (
-    <GlossyCard className="overflow-hidden">
-      <button
+    <>
+      <AIKeyDialog 
+        isOpen={needsAIKey} 
+        onClose={() => setNeedsAIKey(false)}
+        onSuccess={handleAIKeySuccess}
+      />
+      
+      <GlossyCard className="overflow-hidden">
+        <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
       >
@@ -133,9 +152,9 @@ const ReasoningPanel = ({ route, intent }: ReasoningPanelProps) => {
                     {reasoning.tradeoffs.map((tradeoff, index) => (
                       <div key={index} className="p-3 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
-                          <span>{ASPECT_CONFIG[tradeoff.aspect].icon}</span>
+                          <span>{ASPECT_CONFIG[tradeoff.aspect]?.icon || "📊"}</span>
                           <span className="text-xs font-medium text-foreground">
-                            {ASPECT_CONFIG[tradeoff.aspect].label}
+                            {ASPECT_CONFIG[tradeoff.aspect]?.label || tradeoff.aspect}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground ml-6">
@@ -167,7 +186,8 @@ const ReasoningPanel = ({ route, intent }: ReasoningPanelProps) => {
           ) : null}
         </div>
       )}
-    </GlossyCard>
+      </GlossyCard>
+    </>
   );
 };
 

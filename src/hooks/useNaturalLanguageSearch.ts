@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { parseRouteIntent } from "@/utils/aiService";
 
 interface RouteIntent {
   destination: string;
@@ -20,6 +20,7 @@ interface RouteIntent {
 export const useNaturalLanguageSearch = () => {
   const [isParsingIntent, setIsParsingIntent] = useState(false);
   const [intent, setIntent] = useState<RouteIntent | null>(null);
+  const [needsAIKey, setNeedsAIKey] = useState(false);
 
   const parseIntent = async (query: string): Promise<RouteIntent | null> => {
     if (!query.trim()) {
@@ -29,31 +30,21 @@ export const useNaturalLanguageSearch = () => {
     setIsParsingIntent(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('parse-route-intent', {
-        body: { query }
-      });
-
-      if (error) {
-        console.error("Error parsing intent:", error);
-        toast({
-          title: "AI Parse Error",
-          description: "Could not understand your query. Try a simpler search.",
-          variant: "destructive"
-        });
+      const parsedIntent = await parseRouteIntent(query);
+      setIntent(parsedIntent);
+      console.log("Parsed intent:", parsedIntent);
+      return parsedIntent;
+    } catch (error: any) {
+      console.error("Error parsing intent:", error);
+      
+      if (error.message === 'AI_KEY_REQUIRED') {
+        setNeedsAIKey(true);
         return null;
       }
-
-      const parsedIntent = data as RouteIntent;
-      setIntent(parsedIntent);
       
-      console.log("Parsed intent:", parsedIntent);
-      
-      return parsedIntent;
-    } catch (error) {
-      console.error("Error calling parse-route-intent:", error);
       toast({
-        title: "Error",
-        description: "Failed to parse your search query.",
+        title: "AI Parse Error",
+        description: error.message || "Could not understand your query. Try a simpler search.",
         variant: "destructive"
       });
       return null;
@@ -70,6 +61,8 @@ export const useNaturalLanguageSearch = () => {
     parseIntent,
     clearIntent,
     isParsingIntent,
-    intent
+    intent,
+    needsAIKey,
+    setNeedsAIKey
   };
 };
