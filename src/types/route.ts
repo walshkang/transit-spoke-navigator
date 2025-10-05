@@ -41,6 +41,7 @@ export interface Route {
     cycling: DirectionStep[];
     transit: DirectionStep[];
   };
+  allStepsInOrder?: DirectionStep[]; // Sequential order of all steps
 }
 
 export interface RouteCalculationError {

@@ -44,10 +44,11 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute }: RouteDetailsViewPr
     setMap(loadedMap);
   };
 
-  // Combine cycling and transit steps for enhanced routes
-  const allSteps = originalRoute.bikeMinutes > 0 
-    ? [...originalRoute.directions.walking, ...originalRoute.directions.cycling, ...originalRoute.directions.transit]
-    : originalRoute.directions.transit;
+  // Use the sequential order if available, otherwise fall back to the old method
+  const allSteps = originalRoute.allStepsInOrder || 
+    (originalRoute.bikeMinutes > 0 
+      ? [...originalRoute.directions.walking, ...originalRoute.directions.cycling, ...originalRoute.directions.transit]
+      : originalRoute.directions.transit);
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>

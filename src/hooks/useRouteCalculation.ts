@@ -68,37 +68,50 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           const walkingSteps: DirectionStep[] = [];
           const cyclingSteps: DirectionStep[] = [];
           const transitSteps: DirectionStep[] = [];
+          const allStepsInOrder: DirectionStep[] = [];
 
           // Add initial walking to bike station
           initialSegment.walkToStationResponse.routes[0].legs[0].steps.forEach(step => {
-            walkingSteps.push(formatDirectionStep(step));
+            const formattedStep = formatDirectionStep(step);
+            walkingSteps.push(formattedStep);
+            allStepsInOrder.push(formattedStep);
           });
 
           // Add initial cycling segment
           initialSegment.cyclingResponse.routes[0].legs[0].steps.forEach(step => {
-            cyclingSteps.push(formatDirectionStep(step));
+            const formattedStep = formatDirectionStep(step);
+            cyclingSteps.push(formattedStep);
+            allStepsInOrder.push(formattedStep);
           });
 
           // Add transit steps (subway/bus)
           initialTransitSteps
             .filter(step => step.travel_mode === google.maps.TravelMode.TRANSIT)
             .forEach(step => {
-              transitSteps.push(formatDirectionStep(step));
+              const formattedStep = formatDirectionStep(step);
+              transitSteps.push(formattedStep);
+              allStepsInOrder.push(formattedStep);
             });
 
           // Add final walking to bike station
           finalSegment.walkToStationResponse.routes[0].legs[0].steps.forEach(step => {
-            walkingSteps.push(formatDirectionStep(step));
+            const formattedStep = formatDirectionStep(step);
+            walkingSteps.push(formattedStep);
+            allStepsInOrder.push(formattedStep);
           });
 
           // Add final cycling segment
           finalSegment.cyclingResponse.routes[0].legs[0].steps.forEach(step => {
-            cyclingSteps.push(formatDirectionStep(step));
+            const formattedStep = formatDirectionStep(step);
+            cyclingSteps.push(formattedStep);
+            allStepsInOrder.push(formattedStep);
           });
 
           // Add final walking to destination
           finalSegment.finalWalkResponse.routes[0].legs[0].steps.forEach(step => {
-            walkingSteps.push(formatDirectionStep(step));
+            const formattedStep = formatDirectionStep(step);
+            walkingSteps.push(formattedStep);
+            allStepsInOrder.push(formattedStep);
           });
 
           // Calculate durations
@@ -132,12 +145,15 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
               walking: walkingSteps,
               cycling: cyclingSteps,
               transit: transitSteps
-            }
+            },
+            allStepsInOrder
           };
         }
       }
 
       // Create original route
+      const allStepsInOrderOriginal = initialTransitSteps.map(formatDirectionStep);
+      
       const originalRoute: Route = {
         duration: Math.round(
           (transitResponse.routes[0].legs[0].duration?.value || 0) / 60
@@ -161,7 +177,8 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
           transit: initialTransitSteps
             .filter(step => step.travel_mode === google.maps.TravelMode.TRANSIT)
             .map(formatDirectionStep)
-        }
+        },
+        allStepsInOrder: allStepsInOrderOriginal
       };
 
       setRoutes(enhancedRoute ? [originalRoute, enhancedRoute] : [originalRoute]);
