@@ -28,16 +28,17 @@ const SearchResults = ({
   }
 
   return (
-    <div className="mt-8 space-y-4 md:space-y-5">
+    <div className="mt-8 space-y-4 md:space-y-5 animate-fade-in">
       {title && (
         <h3 className="text-sm md:text-base font-medium text-muted-foreground px-1">{title}</h3>
       )}
-      {results.map((result) => (
+      {results.map((result, index) => (
         <div
           key={result.id}
-          className={`glass p-5 md:p-6 rounded-2xl space-y-2 cursor-pointer transition-aero hover:shadow-glow hover:scale-[1.02] ${
+          className={`glass p-5 md:p-6 rounded-2xl space-y-2 cursor-pointer transition-aero hover:shadow-glow hover:scale-[1.02] animate-fade-in ${
             currentSelection?.id === result.id ? 'ring-2 ring-primary shadow-glow' : 'shadow-aero'
           }`}
+          style={{ animationDelay: `${index * 100}ms` }}
           onClick={() => onResultSelect(result)}
         >
           <h3 className="font-semibold text-lg md:text-xl">{result.name}</h3>

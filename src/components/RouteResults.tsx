@@ -30,7 +30,7 @@ const RouteResults = ({
   }
 
   return (
-    <div className="mt-6 md:mt-8 space-y-6 md:space-y-8">
+    <div className="mt-6 md:mt-8 space-y-6 md:space-y-8 animate-fade-in">
       <div className="mb-4 md:mb-6">
         <h2 className="text-lg md:text-xl lg:text-2xl font-medium text-foreground">
           Routes to {selectedResult.name}
@@ -40,7 +40,7 @@ const RouteResults = ({
       
       <div className="space-y-4 md:space-y-5">
         {routes.map((route, index) => (
-          <div key={index} className="border-b pb-4 md:pb-5 last:border-b-0">
+          <div key={index} className="border-b pb-4 md:pb-5 last:border-b-0 animate-fade-in" style={{ animationDelay: `${index * 150}ms` }}>
             <h3 className="text-md md:text-lg font-medium text-foreground mb-2 md:mb-3">
               {route.variant === 'standard' && 'Standard Route'}
               {route.variant === 'enhanced' && 'Enhanced Route'}

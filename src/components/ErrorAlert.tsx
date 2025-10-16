@@ -18,7 +18,7 @@ interface ErrorAlertProps {
 const ErrorAlert = ({ isOpen, title, message, onClose }: ErrorAlertProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-ios-card rounded-ios">
+      <DialogContent className="bg-ios-card rounded-ios animate-scale-in">
         <DialogHeader>
           <DialogTitle className="text-center">{title}</DialogTitle>
         </DialogHeader>

@@ -9,7 +9,7 @@ interface MethodologyDrawerProps {
 const MethodologyDrawer = ({ open, onOpenChange }: MethodologyDrawerProps) => {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[85vh]">
+      <DrawerContent className="h-[85vh] animate-slide-in-right">
         <DrawerHeader>
           <DrawerTitle>Methodology</DrawerTitle>
           <DrawerDescription>
