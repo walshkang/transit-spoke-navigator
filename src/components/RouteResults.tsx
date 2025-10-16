@@ -32,16 +32,16 @@ const RouteResults = ({
   return (
     <div className="mt-6 md:mt-8 space-y-6 md:space-y-8">
       <div className="mb-4 md:mb-6">
-        <h2 className="text-lg md:text-xl lg:text-2xl font-medium text-gray-900">
+        <h2 className="text-lg md:text-xl lg:text-2xl font-medium text-foreground">
           Routes to {selectedResult.name}
         </h2>
-        <p className="text-sm md:text-base text-gray-500">{selectedResult.address}</p>
+        <p className="text-sm md:text-base text-muted-foreground">{selectedResult.address}</p>
       </div>
       
       <div className="space-y-4 md:space-y-5">
         {routes.map((route, index) => (
           <div key={index} className="border-b pb-4 md:pb-5 last:border-b-0">
-            <h3 className="text-md md:text-lg font-medium text-gray-700 mb-2 md:mb-3">
+            <h3 className="text-md md:text-lg font-medium text-foreground mb-2 md:mb-3">
               {route.variant === 'standard' && 'Standard Route'}
               {route.variant === 'enhanced' && 'Enhanced Route'}
               {route.variant === 'no-bus' && 'No Bus (Transit-only)'}
