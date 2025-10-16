@@ -42,8 +42,8 @@ const OriginDestinationForm = ({
   isParsingIntent = false,
 }: OriginDestinationFormProps) => {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="space-y-6 md:space-y-8">
+      <div className="space-y-2 md:space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-sm text-muted-foreground">From</label>
           {onToggleNaturalLanguage && (
@@ -57,14 +57,14 @@ const OriginDestinationForm = ({
             </button>
           )}
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 md:gap-4">
           <div className="relative flex-1">
             <Input
               type="text"
               placeholder="Choose a start location"
               value={fromQuery}
               onChange={(e) => onChangeFrom(e.target.value)}
-              className="pl-4 pr-12 py-7 glass rounded-2xl text-lg shadow-aero"
+              className="pl-4 pr-12 py-7 md:py-8 glass rounded-2xl text-lg md:text-xl shadow-aero"
             />
             {onResetFrom && fromQuery && (
               <button
@@ -80,9 +80,9 @@ const OriginDestinationForm = ({
             type="button"
             onClick={onSearchFrom}
             aria-label="Search start"
-            className="px-6 py-6 rounded-2xl shadow-aero glossy hover:shadow-glow"
+            className="px-6 py-6 md:px-8 md:py-8 rounded-2xl shadow-aero glossy hover:shadow-glow"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
         </div>
         <div>
@@ -90,19 +90,19 @@ const OriginDestinationForm = ({
             type="button"
             onClick={onUseMyLocation}
             variant="secondary"
-            className="mt-3 px-4 py-6 rounded-2xl shadow-aero"
+            className="mt-3 px-4 py-6 md:px-6 md:py-7 rounded-2xl shadow-aero text-base md:text-lg"
           >
-            <LocateFixed className="h-4 w-4 mr-2" /> Use my location
+            <LocateFixed className="h-4 w-4 md:h-5 md:w-5 mr-2" /> Use my location
           </Button>
         </div>
         {/* Origin results / current location list area */}
         {fromResultsArea}
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm text-muted-foreground">To</label>
+      <div className="space-y-2 md:space-y-3">
+        <label className="text-sm md:text-base text-muted-foreground">To</label>
         <form
-          className="relative flex gap-3"
+          className="relative flex gap-3 md:gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             onSearchTo();
@@ -115,7 +115,7 @@ const OriginDestinationForm = ({
               value={toQuery}
               onChange={(e) => onChangeTo(e.target.value)}
               disabled={isParsingIntent}
-              className={`pl-4 pr-12 py-6 glass rounded-2xl text-base shadow-aero ${naturalLanguageMode ? 'border-primary/30' : ''}`}
+              className={`pl-4 pr-12 py-6 md:py-7 glass rounded-2xl text-base md:text-lg shadow-aero ${naturalLanguageMode ? 'border-primary/30' : ''}`}
             />
             {onResetTo && toQuery && !isParsingIntent && (
               <button
@@ -131,15 +131,15 @@ const OriginDestinationForm = ({
             type="submit"
             disabled={isParsingIntent}
             aria-label="Search destination"
-            className="px-6 py-6 rounded-2xl shadow-aero glossy hover:shadow-glow"
+            className="px-6 py-6 md:px-8 md:py-8 rounded-2xl shadow-aero glossy hover:shadow-glow"
           >
             {isParsingIntent ? (
               <>
-                <Sparkles className="h-5 w-5 mr-2 animate-pulse" />
-                Analyzing...
+                <Sparkles className="h-5 w-5 md:h-6 md:w-6 mr-2 animate-pulse" />
+                <span className="hidden md:inline">Analyzing...</span>
               </>
             ) : (
-              <Search className="h-5 w-5" />
+              <Search className="h-5 w-5 md:h-6 md:w-6" />
             )}
           </Button>
         </form>

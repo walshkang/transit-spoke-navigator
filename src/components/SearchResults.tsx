@@ -28,24 +28,24 @@ const SearchResults = ({
   }
 
   return (
-    <div className="mt-8 space-y-4">
+    <div className="mt-8 space-y-4 md:space-y-5">
       {title && (
-        <h3 className="text-sm font-medium text-muted-foreground px-1">{title}</h3>
+        <h3 className="text-sm md:text-base font-medium text-muted-foreground px-1">{title}</h3>
       )}
       {results.map((result) => (
         <div
           key={result.id}
-          className={`glass p-5 rounded-2xl space-y-2 cursor-pointer transition-aero hover:shadow-glow hover:scale-[1.02] ${
+          className={`glass p-5 md:p-6 rounded-2xl space-y-2 cursor-pointer transition-aero hover:shadow-glow hover:scale-[1.02] ${
             currentSelection?.id === result.id ? 'ring-2 ring-primary shadow-glow' : 'shadow-aero'
           }`}
           onClick={() => onResultSelect(result)}
         >
-          <h3 className="font-semibold text-lg">{result.name}</h3>
-          <p className="text-muted-foreground text-sm">{result.address}</p>
+          <h3 className="font-semibold text-lg md:text-xl">{result.name}</h3>
+          <p className="text-muted-foreground text-sm md:text-base">{result.address}</p>
           {result.distance !== undefined && (
             <div className="flex items-center gap-2 mt-2">
               <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-              <p className="text-accent text-sm font-medium">
+              <p className="text-accent text-sm md:text-base font-medium">
                 {result.distance} km away
               </p>
             </div>

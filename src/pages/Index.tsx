@@ -183,16 +183,16 @@ const Index = () => {
       animationDelay: '2s'
     }} />
       
-      <div className="container max-w-md mx-auto p-6 relative z-10">
-        <div className="flex flex-col items-center mb-12 mt-8">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl opacity-50 animate-pulse-glow" />
-            <img src={processedLogo} alt="Transit Navigator" className="w-40 h-40 relative z-10" />
+      <div className="container max-w-md md:max-w-2xl lg:max-w-4xl mx-auto p-6 md:p-8 lg:p-12 relative z-10">
+        <div className="flex flex-col items-center mb-12 md:mb-16 mt-8 md:mt-12">
+          <div className="relative mb-6 md:mb-8">
+            <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl md:blur-2xl opacity-50 animate-pulse-glow" />
+            <img src={processedLogo} alt="Transit Navigator" className="w-40 h-40 md:w-52 md:h-52 lg:w-64 lg:h-64 relative z-10" />
           </div>
-          <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-3 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             last mile: get to the subway faster
           </h1>
-          <p className="text-center text-gray-600 font-thin text-base">discover your perfect route</p>
+          <p className="text-center text-gray-600 font-thin text-base md:text-lg lg:text-xl">discover your perfect route</p>
           <div className="mt-4">
             <button
               className="text-ios-blue text-sm underline hover:opacity-80"
