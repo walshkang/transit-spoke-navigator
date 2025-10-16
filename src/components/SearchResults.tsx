@@ -8,6 +8,7 @@ interface SearchResultsProps {
   currentSelection?: SearchResult | null;
   onResultSelect: (result: SearchResult) => void;
   onNewSearch: () => void;
+  title?: string;
 }
 
 const SearchResults = ({ 
@@ -15,7 +16,8 @@ const SearchResults = ({
   isLoading, 
   onResultSelect,
   currentSelection,
-  onNewSearch
+  onNewSearch,
+  title
 }: SearchResultsProps) => {
   if (isLoading) {
     return (
@@ -27,6 +29,9 @@ const SearchResults = ({
 
   return (
     <div className="mt-8 space-y-4">
+      {title && (
+        <h3 className="text-sm font-medium text-muted-foreground px-1">{title}</h3>
+      )}
       {results.map((result) => (
         <div
           key={result.id}

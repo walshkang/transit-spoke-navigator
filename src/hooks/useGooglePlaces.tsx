@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SearchResult } from "@/types/location";
 import { calculateDistance } from "@/utils/location";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,8 +7,21 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const lastControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
 
-  const searchPlaces = async (query: string, signal?: AbortSignal) => {
+  // Simple in-memory cache with TTL
+  const cacheRef = useRef<Map<string, { ts: number; results: SearchResult[] }>>(new Map());
+  const CACHE_TTL_MS = 10 * 60 * 1000;
+
+  function makeKey(query: string, loc: GeolocationCoordinates | null) {
+    const k = query.trim().toLowerCase();
+    if (!loc) return `${k}|none`;
+    const hint = `${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`;
+    return `${k}|${hint}`;
+  }
+
+  const performSearch = async (query: string, signal?: AbortSignal): Promise<SearchResult[]> => {
     if (!query || query.trim().length < 3) {
       toast({
         title: "Search query too short",
@@ -16,7 +29,7 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
         variant: "destructive",
       });
       setResults([]);
-      return;
+      return [];
     }
 
     setIsLoading(true);
@@ -92,6 +105,7 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
       }));
 
       setResults(formattedResults);
+      return formattedResults;
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error("Search error:", error);
@@ -103,15 +117,49 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
           variant: "destructive",
         });
       }
+      return [];
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Public API: debounced + cached search
+  const searchPlaces = (query: string) => {
+    // Check cache first
+    const key = makeKey(query, currentLocation);
+    const cached = cacheRef.current.get(key);
+    const now = Date.now();
+    if (cached && now - cached.ts < CACHE_TTL_MS) {
+      setResults(cached.results);
+      return Promise.resolve();
+    }
+
+    // Abort previous in-flight request
+    if (lastControllerRef.current) {
+      lastControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    lastControllerRef.current = controller;
+
+    // Debounce
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+    }
+
+    return new Promise<void>((resolve) => {
+      debounceTimerRef.current = window.setTimeout(async () => {
+        const fetched = await performSearch(query, controller.signal);
+        // After successful fetch, cache results (use fetched, not state snapshot)
+        cacheRef.current.set(key, { ts: Date.now(), results: fetched });
+        resolve();
+      }, 450);
+    });
+  };
+
   return { 
     results, 
     isLoading, 
-    searchPlaces, 
+    searchPlaces,
     setResults 
   };
 };

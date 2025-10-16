@@ -106,15 +106,17 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute, intent }: RouteDetai
         <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {/* Map Section */}
           {showMap && (
-            <GlossyCard className="overflow-hidden">
-              <div className="aspect-video w-full">
-                <RouteMap 
-                  isVisible={showMap} 
-                  onMapLoad={handleMapLoad}
-                  route={originalRoute}
-                />
-              </div>
-            </GlossyCard>
+            <div className={originalRoute.bikeMinutes > 0 ? "p-[1.5px] rounded-2xl bg-gradient-to-r from-blue-400/40 via-cyan-400/40 to-blue-400/40" : "rounded-2xl"}>
+              <GlossyCard className="overflow-hidden">
+                <div className="aspect-video w-full">
+                  <RouteMap 
+                    isVisible={showMap} 
+                    onMapLoad={handleMapLoad}
+                    route={originalRoute}
+                  />
+                </div>
+              </GlossyCard>
+            </div>
           )}
 
           {/* AI Reasoning Panel */}
@@ -172,7 +174,8 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute, intent }: RouteDetai
           )}
 
           {/* Step-by-Step Directions */}
-          <GlossyCard>
+          <div className={originalRoute.bikeMinutes > 0 ? "p-[1.5px] rounded-2xl bg-gradient-to-r from-blue-400/40 via-cyan-400/40 to-blue-400/40" : "rounded-2xl"}>
+            <GlossyCard>
             <GlossyCardHeader>
               <GlossyCardTitle className="flex items-center justify-between text-base">
                 <span>Step-by-Step Directions</span>
@@ -193,7 +196,8 @@ const RouteDetailsView = ({ isOpen, onClose, originalRoute, intent }: RouteDetai
                 ))}
               </div>
             </GlossyCardContent>
-          </GlossyCard>
+            </GlossyCard>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

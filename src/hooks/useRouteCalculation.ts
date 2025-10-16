@@ -1,16 +1,27 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SearchResult } from "@/types/location";
 import { Route, DirectionStep } from "@/types/route";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDirectionStep } from "@/utils/routeCalculations";
 import { useRouteSegments } from "./useRouteSegments";
 
-export const useRouteCalculation = (currentLocation: GeolocationCoordinates | null) => {
+type OriginCoords = { lat: number; lng: number };
+
+export const useRouteCalculation = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const { toast } = useToast();
   const { calculateSegment, processInitialSegment, processFinalSegment } = useRouteSegments();
+
+  // Directions cache keyed by OD pair (rounded)
+  type RouteKey = `${number},${number}->${number},${number}`;
+  const directionsCacheRef = useRef<Map<RouteKey, { ts: number; data: Route[] }>>(new Map());
+  const ROUTE_TTL_MS = 15 * 60 * 1000;
+
+  function makeRouteKey(o: OriginCoords, d: { lat: number; lng: number }): RouteKey {
+    return `${o.lat.toFixed(5)},${o.lng.toFixed(5)}->${d.lat.toFixed(5)},${d.lng.toFixed(5)}` as RouteKey;
+  }
 
   const orderStepsGeographically = (steps: DirectionStep[]): DirectionStep[] => {
     // For routes with segments, we need to maintain the order they were added
@@ -19,11 +30,11 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     return steps;
   };
 
-  const calculateRoutes = async (destination: SearchResult) => {
-    if (!currentLocation) {
+  const calculateRoutes = async (destination: SearchResult, originCoords: OriginCoords) => {
+    if (!originCoords) {
       toast({
-        title: "Error",
-        description: "Current location is not available",
+        title: "Missing origin",
+        description: "Please select a starting point first",
         variant: "destructive",
       });
       return;
@@ -34,13 +45,22 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
     
     try {
       const origin = new google.maps.LatLng(
-        currentLocation.latitude,
-        currentLocation.longitude
+        originCoords.lat,
+        originCoords.lng
       );
       const destinationLatLng = new google.maps.LatLng(
         destination.location.lat,
         destination.location.lng
       );
+
+      // Cache check
+      const cacheKey = makeRouteKey(originCoords, destination.location);
+      const cached = directionsCacheRef.current.get(cacheKey);
+      const now = Date.now();
+      if (cached && now - cached.ts < ROUTE_TTL_MS) {
+        setRoutes(cached.data);
+        return;
+      }
 
       // Get initial transit route
       const transitResponse = await calculateSegment(
@@ -181,7 +201,10 @@ export const useRouteCalculation = (currentLocation: GeolocationCoordinates | nu
         allStepsInOrder: allStepsInOrderOriginal
       };
 
-      setRoutes(enhancedRoute ? [originalRoute, enhancedRoute] : [originalRoute]);
+      const nextRoutes = enhancedRoute ? [originalRoute, enhancedRoute] : [originalRoute];
+      setRoutes(nextRoutes);
+      // Save to cache
+      directionsCacheRef.current.set(cacheKey, { ts: Date.now(), data: nextRoutes });
 
     } catch (error) {
       console.error("Route calculation error:", error);

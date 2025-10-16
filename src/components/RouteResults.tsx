@@ -53,6 +53,7 @@ const RouteResults = ({
               bikeMinutes={route.bikeMinutes}
               subwayMinutes={route.subwayMinutes}
               walkingMinutes={route.walkingMinutes}
+              isEnhanced={index === 1}
               onClick={() => onRouteSelect(route)}
             />
           </div>

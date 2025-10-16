@@ -5,7 +5,14 @@ import { calculateDistance } from "./location";
 const GBFS_INFO_URL = "https://gbfs.citibikenyc.com/gbfs/en/station_information.json";
 const GBFS_STATUS_URL = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json";
 
+let cachedStations: { ts: number; data: StationData[] } | null = null;
+const STATION_TTL = 60 * 1000; // 60s
+
 export async function fetchStationData(): Promise<StationData[]> {
+  // Return cached snapshot when fresh
+  if (cachedStations && Date.now() - cachedStations.ts < STATION_TTL) {
+    return cachedStations.data;
+  }
   try {
     // Fetch station information with proper error handling
     const infoResponse = await fetch(GBFS_INFO_URL);
@@ -24,7 +31,7 @@ export async function fetchStationData(): Promise<StationData[]> {
     const stationStatus: StationStatus[] = statusData.data.stations;
 
     // Combine information and status
-    return stationInfo.map(info => {
+    const combined = stationInfo.map(info => {
       const status = stationStatus.find(s => s.station_id === info.station_id);
       if (!status) {
         console.warn(`No status found for station ${info.station_id}`);
@@ -35,6 +42,10 @@ export async function fetchStationData(): Promise<StationData[]> {
         status: status
       };
     }).filter((station): station is StationData => station !== null);
+
+    // Save to cache
+    cachedStations = { ts: Date.now(), data: combined };
+    return combined;
   } catch (error) {
     console.error("Error fetching station data:", error);
     throw error;

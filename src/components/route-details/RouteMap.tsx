@@ -63,6 +63,22 @@ const RouteMap = ({ isVisible, onMapLoad, route }: RouteMapProps) => {
     }
   } else {
     // Regular transit route
+    // Include walking segments as well for standard routes
+    if (route.directions.walking.length > 0) {
+      const walkingSteps = route.directions.walking;
+      for (let i = 0; i < walkingSteps.length; i++) {
+        const step = walkingSteps[i];
+        if (step.start_location && step.end_location) {
+          segments.push({
+            start: step.start_location,
+            end: step.end_location,
+            mode: 'WALKING',
+            color: "#757575"
+          });
+        }
+      }
+    }
+
     if (route.directions.transit.length > 0) {
       const transitSteps = route.directions.transit;
       for (let i = 0; i < transitSteps.length; i++) {

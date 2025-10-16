@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { SearchResult } from "@/types/location";
 import SearchBar from "@/components/SearchBar";
+import OriginDestinationForm from "@/components/OriginDestinationForm";
 import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
@@ -17,7 +18,9 @@ import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { apiKeyManager } from "@/utils/apiKeyManager";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentLocation, setCurrentLocation] = useState<GeolocationCoordinates | null>(null);
+  const [originQuery, setOriginQuery] = useState("");
+  const [destinationQuery, setDestinationQuery] = useState("");
+  const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [error, setError] = useState<LocationError | null>(null);
   const [isRouteDetailsOpen, setIsRouteDetailsOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
@@ -27,12 +30,20 @@ const Index = () => {
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
   const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
+  // From search (no bias)
   const {
-    results,
-    isLoading,
-    searchPlaces,
-    setResults
-  } = useGooglePlaces(currentLocation);
+    results: fromResults,
+    isLoading: isLoadingFrom,
+    searchPlaces: searchFrom,
+    setResults: setFromResults
+  } = useGooglePlaces(null);
+  // To search (biased by origin if available)
+  const {
+    results: toResults,
+    isLoading: isLoadingTo,
+    searchPlaces: searchTo,
+    setResults: setToResults
+  } = useGooglePlaces(originCoords ? ({ latitude: originCoords.lat, longitude: originCoords.lng } as GeolocationCoordinates) : null);
   const {
     routes,
     isCalculatingRoute,
@@ -40,7 +51,7 @@ const Index = () => {
     calculateRoutes,
     setRoutes,
     setSelectedResult
-  } = useRouteCalculation(currentLocation);
+  } = useRouteCalculation();
   const {
     parseIntent,
     clearIntent,
@@ -60,9 +71,8 @@ const Index = () => {
       script.async = true;
       document.head.appendChild(script);
 
-      script.onload = () => {
-        getLocation();
-      };
+      // Do not auto geolocate; only load Maps
+      script.onload = () => {};
       
       script.onerror = () => {
         setError({
@@ -79,54 +89,39 @@ const Index = () => {
       }
     };
   }, [apiKey]);
-  const getLocation = async () => {
+  const handleUseMyLocation = async () => {
     try {
       const position = await getCurrentPosition();
-      setCurrentLocation(position.coords);
+      setOriginCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
     } catch (error) {
       setError({
-        title: "Location Services Required",
-        message: "Please enable location services to use this feature."
+        title: "Location Permission Needed",
+        message: "We couldn't access your location. Please allow location access."
       });
     }
   };
-  const handleSearchSubmit = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearchFromSubmit = async () => {
+    if (!originQuery.trim()) return;
+    await searchFrom(originQuery);
+  };
 
-    // Cancel previous search
-    if (abortController) {
-      abortController.abort();
+  const handleSearchToSubmit = async () => {
+    if (!destinationQuery.trim()) return;
+    if (!originCoords) {
+      setError({ title: "Pick a start", message: "Set From (or use your location) first." });
+      return;
     }
-    const newAbortController = new AbortController();
-    setAbortController(newAbortController);
-    try {
-      if (naturalLanguageMode) {
-        // Parse natural language query
-        const parsedIntent = await parseIntent(searchQuery);
-        if (parsedIntent) {
-          // Use the destination from parsed intent
-          await searchPlaces(parsedIntent.destination, newAbortController.signal);
-        }
-      } else {
-        // Regular search
-        await searchPlaces(searchQuery, newAbortController.signal);
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        setError({
-          title: "Search Error",
-          message: "Failed to fetch search results"
-        });
-      }
-    }
+    await searchTo(destinationQuery);
   };
   const handleResetSearch = () => {
     // Clear all search-related state
     if (abortController) {
       abortController.abort();
     }
-    setSearchQuery("");
-    setResults([]);
+    setOriginQuery("");
+    setDestinationQuery("");
+    setFromResults([]);
+    setToResults([]);
     setCurrentSearch(null);
     setSelectedResult(null);
     setRoutes([]);
@@ -139,9 +134,20 @@ const Index = () => {
       clearIntent();
     }
   };
-  const handleResultSelect = (result: SearchResult) => {
-    setCurrentSearch(result);
-    calculateRoutes(result);
+  const handleResultSelect = (result: SearchResult, list: 'from' | 'to') => {
+    if (list === 'from') {
+      setOriginQuery(result.name);
+      setOriginCoords(result.location);
+      setCurrentSearch(null);
+      setFromResults([]);
+    } else {
+      setCurrentSearch(result);
+      if (!originCoords) {
+        setError({ title: "Pick a start", message: "Set From (or use your location) first." });
+        return;
+      }
+      calculateRoutes(result, originCoords);
+    }
   };
   const handleRouteSelect = (route: any) => {
     setSelectedRoute(route);
@@ -187,13 +193,84 @@ const Index = () => {
           <p className="text-center text-gray-600 font-thin text-base">discover your perfect route</p>
         </div>
         
-        <SearchBar placeholder="Where to?" value={searchQuery} onChange={setSearchQuery} onSearch={handleSearchSubmit} showReset={!!currentSearch || searchQuery.length > 0} onReset={handleResetSearch} naturalLanguageMode={naturalLanguageMode} onToggleNaturalLanguage={handleToggleNaturalLanguage} isParsingIntent={isParsingIntent} />
+        <OriginDestinationForm
+          fromQuery={originQuery}
+          onChangeFrom={setOriginQuery}
+          onSearchFrom={handleSearchFromSubmit}
+          onUseMyLocation={handleUseMyLocation}
+          onResetFrom={() => {
+            setOriginQuery("");
+            setOriginCoords(null);
+            setFromResults([]);
+          }}
+          fromResultsArea={(
+            <>
+              {/* Origin results list (and current location) shown above destination */}
+              {originCoords && (
+                <div
+                  className="p-[1.5px] rounded-2xl bg-gradient-to-r from-emerald-300/30 to-cyan-300/30 mb-4"
+                  role="button"
+                  onClick={() => {
+                    setOriginQuery('Current Location');
+                  }}
+                >
+                  <div className="glass p-5 rounded-2xl space-y-2 transition-aero shadow-aero bg-emerald-50/40">
+                    <h3 className="font-semibold text-lg">Current Location</h3>
+                    <p className="text-muted-foreground text-sm">Lat {originCoords.lat.toFixed(5)}, Lng {originCoords.lng.toFixed(5)}</p>
+                  </div>
+                </div>
+              )}
+              {fromResults.length > 0 && (
+                <SearchResults
+                  title="Choose a start"
+                  results={fromResults}
+                  isLoading={isLoadingFrom}
+                  onResultSelect={(r) => handleResultSelect(r, 'from')}
+                  onNewSearch={() => setFromResults([])}
+                />
+              )}
+            </>
+          )}
+          toQuery={destinationQuery}
+          onChangeTo={setDestinationQuery}
+          onSearchTo={handleSearchToSubmit}
+          onResetTo={() => {
+            setDestinationQuery("");
+            setToResults([]);
+          }}
+          naturalLanguageMode={naturalLanguageMode}
+          onToggleNaturalLanguage={handleToggleNaturalLanguage}
+          isParsingIntent={isParsingIntent}
+        />
 
         {intent && <div className="mt-4">
             <IntentDisplay intent={intent} onDismiss={clearIntent} />
           </div>}
 
-        {selectedResult && routes.length > 0 ? <RouteResults selectedResult={selectedResult} routes={routes} isCalculatingRoute={isCalculatingRoute} onRouteSelect={handleRouteSelect} onNewSearch={handleResetSearch} /> : <SearchResults results={results} isLoading={isLoading} onResultSelect={handleResultSelect} onNewSearch={handleResetSearch} currentSelection={currentSearch} />}
+        {selectedResult && routes.length > 0 ? (
+          <RouteResults
+            selectedResult={selectedResult}
+            routes={routes}
+            isCalculatingRoute={isCalculatingRoute}
+            onRouteSelect={handleRouteSelect}
+            onNewSearch={handleResetSearch}
+          />
+        ) : (
+          <>
+            {/* From results moved above via fromResultsArea */}
+            {/* To results */}
+            {toResults.length > 0 && (
+              <SearchResults
+                title="Choose a destination"
+                results={toResults}
+                isLoading={isLoadingTo}
+                onResultSelect={(r) => handleResultSelect(r, 'to')}
+                onNewSearch={() => setToResults([])}
+                currentSelection={currentSearch}
+              />
+            )}
+          </>
+        )}
 
         <ErrorAlert isOpen={error !== null} title={error?.title || "Error"} message={error?.message || "An error occurred"} onClose={() => setError(null)} />
 
