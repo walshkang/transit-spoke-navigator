@@ -11,6 +11,7 @@ import MethodologyDrawer from "@/components/MethodologyDrawer";
 import ApiKeyInput from "@/components/ApiKeyInput";
 import AIKeyDialog from "@/components/AIKeyDialog";
 import IntentDisplay from "@/components/IntentDisplay";
+import ThemeToggle from "@/components/ThemeToggle";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
@@ -184,6 +185,9 @@ const Index = () => {
     }} />
       
       <div className="container max-w-md md:max-w-2xl lg:max-w-4xl mx-auto p-6 md:p-8 lg:p-12 relative z-10">
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
+          <ThemeToggle />
+        </div>
         <div className="flex flex-col items-center mb-12 md:mb-16 mt-8 md:mt-12">
           <div className="relative mb-6 md:mb-8">
             <div className="absolute inset-0 bg-gradient-aero rounded-full blur-xl md:blur-2xl opacity-50 animate-pulse-glow" />
