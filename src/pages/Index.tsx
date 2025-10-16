@@ -196,7 +196,7 @@ const Index = () => {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-3 text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             last mile: get to the subway faster
           </h1>
-          <p className="text-center text-gray-600 font-thin text-base md:text-lg lg:text-xl">discover your perfect route</p>
+          <p className="text-center text-muted-foreground font-thin text-base md:text-lg lg:text-xl">discover your perfect route</p>
           <div className="mt-4">
             <button
               className="text-ios-blue text-sm underline hover:opacity-80"
