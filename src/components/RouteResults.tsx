@@ -2,13 +2,9 @@ import RouteCard from "./RouteCard";
 import { SearchResult } from "@/types/location";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Route as AppRoute } from "@/types/route";
 
-interface Route {
-  duration: number;
-  bikeMinutes: number;
-  subwayMinutes: number;
-  walkingMinutes: number;
-}
+type Route = AppRoute;
 
 interface RouteResultsProps {
   selectedResult: SearchResult;
@@ -46,14 +42,18 @@ const RouteResults = ({
         {routes.map((route, index) => (
           <div key={index} className="border-b pb-4 last:border-b-0">
             <h3 className="text-md font-medium text-gray-700 mb-2">
-              {index === 0 ? "Standard Route" : "Enhanced Route"}
+              {route.variant === 'standard' && 'Standard Route'}
+              {route.variant === 'enhanced' && 'Enhanced Route'}
+              {route.variant === 'no-bus' && 'No Bus (Transit-only)'}
+              {route.variant === 'no-bus-bike' && 'No Bus + Bike'}
+              {!route.variant && (index === 0 ? 'Standard Route' : 'Enhanced Route')}
             </h3>
             <RouteCard
               duration={route.duration}
               bikeMinutes={route.bikeMinutes}
               subwayMinutes={route.subwayMinutes}
               walkingMinutes={route.walkingMinutes}
-              isEnhanced={index === 1}
+              isEnhanced={route.bikeMinutes > 0}
               onClick={() => onRouteSelect(route)}
             />
           </div>

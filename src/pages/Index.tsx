@@ -7,6 +7,7 @@ import ErrorAlert from "@/components/ErrorAlert";
 import SearchResults from "@/components/SearchResults";
 import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
+import MethodologyDrawer from "@/components/MethodologyDrawer";
 import ApiKeyInput from "@/components/ApiKeyInput";
 import AIKeyDialog from "@/components/AIKeyDialog";
 import IntentDisplay from "@/components/IntentDisplay";
@@ -30,6 +31,7 @@ const Index = () => {
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
   const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
+  const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
   // From search (no bias)
   const {
     results: fromResults,
@@ -191,6 +193,14 @@ const Index = () => {
             last mile: get to the subway faster
           </h1>
           <p className="text-center text-gray-600 font-thin text-base">discover your perfect route</p>
+          <div className="mt-4">
+            <button
+              className="text-ios-blue text-sm underline hover:opacity-80"
+              onClick={() => setIsMethodologyOpen(true)}
+            >
+              Methodology
+            </button>
+          </div>
         </div>
         
         <OriginDestinationForm
@@ -281,6 +291,7 @@ const Index = () => {
         />
 
         {selectedRoute && <RouteDetailsView isOpen={isRouteDetailsOpen} onClose={() => setIsRouteDetailsOpen(false)} originalRoute={selectedRoute} intent={intent} />}
+        <MethodologyDrawer open={isMethodologyOpen} onOpenChange={setIsMethodologyOpen} />
       </div>
     </div>;
 };

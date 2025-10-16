@@ -31,6 +31,8 @@ export interface Route {
   bikeMinutes: number;
   subwayMinutes: number;
   walkingMinutes: number;
+  // Distinguishes how the route was generated for labeling and logic
+  variant?: 'standard' | 'enhanced' | 'no-bus' | 'no-bus-bike';
   transitStartLocation?: google.maps.LatLng;
   startStation?: StationData;
   endStation?: StationData;
