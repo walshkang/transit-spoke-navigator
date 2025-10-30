@@ -18,6 +18,8 @@ import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
 import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { apiKeyManager } from "@/utils/apiKeyManager";
+import { suggestDestinationsGrounded } from "@/utils/aiService";
+import { getPlaceDetails } from "@/utils/places";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [originQuery, setOriginQuery] = useState("");
@@ -33,6 +35,7 @@ const Index = () => {
   const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
+  const [isLoadingNLSuggestions, setIsLoadingNLSuggestions] = useState(false);
   // From search (no bias)
   const {
     results: fromResults,
@@ -70,8 +73,11 @@ const Index = () => {
       apiKeyManager.setGoogleMapsKey(keyToUse);
       
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${keyToUse}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(keyToUse)}&loading=async&libraries=places`;
+      // Recommended loading pattern
+      script.setAttribute('loading', 'async');
       script.async = true;
+      script.defer = true;
       document.head.appendChild(script);
 
       // Do not auto geolocate; only load Maps
@@ -110,11 +116,59 @@ const Index = () => {
 
   const handleSearchToSubmit = async () => {
     if (!destinationQuery.trim()) return;
-    if (!originCoords) {
-      setError({ title: "Pick a start", message: "Set From (or use your location) first." });
-      return;
+    if (naturalLanguageMode) {
+      if (!originCoords) {
+        setError({ title: "Pick a start", message: "Set From (or use your location) first." });
+        return;
+      }
+      setToResults([]);
+      setIsLoadingNLSuggestions(true);
+      try {
+        // Parse intent (uses existing provider; will also raise AI key dialog if needed)
+        await parseIntent(destinationQuery);
+
+        const provider = apiKeyManager.getAIProvider();
+        const aiKey = apiKeyManager.getAIKey();
+        if (provider !== 'gemini' || !aiKey) {
+          setNeedsAIKey(true);
+          await searchTo(destinationQuery); // fallback
+          return;
+        }
+
+        const suggestions = await suggestDestinationsGrounded(
+          destinationQuery,
+          { latitude: originCoords.lat, longitude: originCoords.lng },
+          5
+        );
+
+        if (!suggestions || suggestions.length === 0) {
+          await searchTo(destinationQuery); // fallback
+          return;
+        }
+
+        const details = await Promise.all(
+          suggestions.map((s) => (s.placeId ? getPlaceDetails(s.placeId) : Promise.resolve(null)))
+        );
+        const results = details.filter((d): d is NonNullable<typeof d> => !!d);
+
+        if (results.length === 0) {
+          await searchTo(destinationQuery); // fallback
+          return;
+        }
+
+        setToResults(results);
+      } catch (e) {
+        await searchTo(destinationQuery); // fallback on error
+      } finally {
+        setIsLoadingNLSuggestions(false);
+      }
+    } else {
+      if (!originCoords) {
+        setError({ title: "Pick a start", message: "Set From (or use your location) first." });
+        return;
+      }
+      await searchTo(destinationQuery);
     }
-    await searchTo(destinationQuery);
   };
   const handleResetSearch = () => {
     // Clear all search-related state
@@ -273,11 +327,11 @@ const Index = () => {
           <>
             {/* From results moved above via fromResultsArea */}
             {/* To results */}
-            {toResults.length > 0 && (
+            {(toResults.length > 0 || (naturalLanguageMode && isLoadingNLSuggestions)) && (
               <SearchResults
                 title="Choose a destination"
                 results={toResults}
-                isLoading={isLoadingTo}
+                isLoading={naturalLanguageMode ? isLoadingNLSuggestions : isLoadingTo}
                 onResultSelect={(r) => handleResultSelect(r, 'to')}
                 onNewSearch={() => setToResults([])}
                 currentSelection={currentSearch}

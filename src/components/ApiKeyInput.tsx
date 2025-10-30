@@ -14,8 +14,27 @@ const ApiKeyInput = ({
   } = useToast();
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Allow empty key to use backend fallback
-    onSubmit(apiKey.trim());
+    const value = apiKey.trim();
+    if (!value) {
+      toast({
+        title: "API key required",
+        description: "Please enter a valid Google Maps API key (starts with AIza).",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Basic validation: AIza prefix and ASCII-only
+    const asciiOnly = /^[\x00-\x7F]+$/.test(value);
+    const looksLikeMapsKey = /^AIza[0-9A-Za-z_\-]{10,}$/.test(value);
+    if (!asciiOnly || !looksLikeMapsKey) {
+      toast({
+        title: "Invalid Google Maps API key",
+        description: "Double-check you copied the key exactly. It should not include spaces or quotes.",
+        variant: "destructive"
+      });
+      return;
+    }
+    onSubmit(value);
   };
   return <div className="min-h-screen bg-ios-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6 bg-white p-6 rounded-lg shadow-lg">

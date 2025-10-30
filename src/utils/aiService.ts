@@ -152,3 +152,101 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
   
   return JSON.parse(jsonText);
 }
+
+/**
+ * Suggest destination candidates using Gemini grounded with Google Maps.
+ * Returns an array of items with at least a name and optional placeId.
+ */
+export async function suggestDestinationsGrounded(
+  query: string,
+  origin?: { latitude: number; longitude: number },
+  limit: number = 5
+): Promise<Array<{ name: string; placeId?: string }>> {
+  const apiKey = apiKeyManager.getAIKey();
+  const provider = apiKeyManager.getAIProvider();
+
+  if (!apiKey) {
+    throw new Error('AI_KEY_REQUIRED');
+  }
+  if (provider !== 'gemini') {
+    // Caller can decide to prompt for Gemini key or fallback
+    throw new Error('AI_PROVIDER_NOT_GEMINI');
+  }
+
+  const prompt = `You are a smart destination suggester. Use Google Maps data to find real, popular, and relevant places for this user query.
+
+User query: "${query}"
+
+Return ONLY valid JSON with no markdown, no commentary. The JSON must be an array of up to ${limit} items. Each item must have:
+{
+  "name": string,
+  "placeId": string (Google Maps Place ID) or null
+}`;
+
+  const body: any = {
+    contents: [
+      {
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
+    ],
+    tools: [{ googleMaps: {} }],
+  };
+
+  if (origin) {
+    body.toolConfig = {
+      retrievalConfig: {
+        latLng: {
+          latitude: origin.latitude,
+          longitude: origin.longitude,
+        },
+      },
+    };
+  }
+
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  let text: string =
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
+
+  if (typeof text !== 'string') {
+    // Some SDKs may return inline JSON; normalize to string
+    text = JSON.stringify(text);
+  }
+  if (text.includes('```')) {
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  }
+
+  try {
+    const suggestions = JSON.parse(text);
+    if (Array.isArray(suggestions)) {
+      return suggestions
+        .slice(0, limit)
+        .map((s: any) => ({ name: String(s?.name || ''), placeId: s?.placeId || undefined }))
+        .filter((s: { name: string }) => s.name.length > 0);
+    }
+    return [];
+  } catch (e) {
+    // If JSON parsing fails, treat as no suggestions
+    return [];
+  }
+}
