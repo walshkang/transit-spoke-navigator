@@ -250,3 +250,151 @@ Return ONLY valid JSON with no markdown, no commentary. The JSON must be an arra
     return [];
   }
 }
+
+// Cost-optimized: export a name that makes intent clear
+export async function getGroundedSuggestions(
+  query: string,
+  origin?: { latitude: number; longitude: number },
+  limit: number = 5
+): Promise<Array<{ name: string; placeId?: string }>> {
+  return suggestDestinationsGrounded(query, origin, limit);
+}
+
+export interface SuggestionReasoningResult {
+  summary?: string;
+  // Prefer id mapping when available
+  reasonsById: Record<string, string>;
+  // Fallback by normalized name when id is missing
+  reasonsByName: Record<string, string>;
+  sources: Array<{ title: string; uri: string }>;
+  groundingRaw?: unknown;
+  widgetToken?: string;
+}
+
+export async function getSuggestionReasoning(
+  suggestions: Array<{ name: string; placeId?: string }>,
+  origin?: { latitude: number; longitude: number }
+): Promise<SuggestionReasoningResult> {
+  const apiKey = apiKeyManager.getAIKey();
+  const provider = apiKeyManager.getAIProvider();
+
+  if (!apiKey) {
+    throw new Error('AI_KEY_REQUIRED');
+  }
+  if (provider !== 'gemini') {
+    throw new Error('AI_PROVIDER_NOT_GEMINI');
+  }
+
+  const items = suggestions
+    .slice(0, 8)
+    .map((s, i) => `${i + 1}. ${s.name}${s.placeId ? ` (placeId: ${s.placeId})` : ''}`)
+    .join('\n');
+
+  const prompt = `You are explaining why these suggested destinations are good matches. Use Google Maps facts (proximity, popularity, opening hours, ratings and review counts, notable quotes from reviews). Keep each reason concise (<= 20 words) and factual. Return ONLY valid JSON.
+
+Suggestions:\n${items}
+
+Return JSON:
+{
+  "summary": "one sentence why these places fit",
+  "reasons": [
+    { "placeId": string or null, "name": string, "reason": string }
+  ]
+}`;
+
+  const body: any = {
+    contents: [
+      {
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
+    ],
+    tools: [{ googleMaps: {} }],
+    // Keep tokens small
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 400,
+    },
+  };
+
+  if (origin) {
+    body.toolConfig = {
+      retrievalConfig: {
+        latLng: {
+          latitude: origin.latitude,
+          longitude: origin.longitude,
+        },
+      },
+    };
+  }
+
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const grounding = data?.candidates?.[0]?.groundingMetadata;
+  const widgetToken = data?.candidates?.[0]?.googleMapsWidgetContextToken
+    ?? data?.googleMapsWidgetContextToken
+    ?? grounding?.googleMapsWidgetContextToken;
+  let text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  if (typeof text !== 'string') {
+    text = JSON.stringify(text);
+  }
+  if (text.includes('```')) {
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  }
+
+  let summary: string | undefined;
+  const reasonsById: Record<string, string> = {};
+  const reasonsByName: Record<string, string> = {};
+  const sources: Array<{ title: string; uri: string }> = [];
+
+  try {
+    const parsed = JSON.parse(text);
+    summary = typeof parsed?.summary === 'string' ? parsed.summary : undefined;
+    const reasons: any[] = Array.isArray(parsed?.reasons) ? parsed.reasons : [];
+    for (const r of reasons) {
+      const reason = typeof r?.reason === 'string' ? r.reason : '';
+      if (!reason) continue;
+      const pid = typeof r?.placeId === 'string' ? r.placeId : undefined;
+      const name = typeof r?.name === 'string' ? r.name : undefined;
+      if (pid) {
+        reasonsById[pid] = reason;
+      } else if (name) {
+        reasonsByName[name.trim().toLowerCase()] = reason;
+      }
+    }
+  } catch {
+    // ignore JSON errors – return empty reasons
+  }
+
+  if (grounding?.groundingChunks) {
+    const seen = new Set<string>();
+    for (const chunk of grounding.groundingChunks) {
+      const m = chunk?.maps;
+      if (m?.uri && !seen.has(m.uri)) {
+        sources.push({ title: m.title || m.uri, uri: m.uri });
+        seen.add(m.uri);
+      }
+    }
+  }
+
+  return { summary, reasonsById, reasonsByName, sources, groundingRaw: grounding, widgetToken };
+}

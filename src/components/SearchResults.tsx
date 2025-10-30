@@ -43,6 +43,11 @@ const SearchResults = ({
         >
           <h3 className="font-semibold text-lg md:text-xl">{result.name}</h3>
           <p className="text-muted-foreground text-sm md:text-base">{result.address}</p>
+          {result.reason && (
+            <p className="text-muted-foreground text-xs md:text-sm mt-2">
+              {result.reason}
+            </p>
+          )}
           {result.distance !== undefined && (
             <div className="flex items-center gap-2 mt-2">
               <div className="h-1.5 w-1.5 rounded-full bg-accent" />

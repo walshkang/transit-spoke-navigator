@@ -3,6 +3,9 @@ export interface SearchResult {
   name: string;
   address: string;
   distance?: number;
+  reason?: string;
+  rating?: number;
+  userRatingCount?: number;
   location: {
     lat: number;
     lng: number;

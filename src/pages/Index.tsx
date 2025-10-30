@@ -18,8 +18,8 @@ import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
 import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { apiKeyManager } from "@/utils/apiKeyManager";
-import { suggestDestinationsGrounded } from "@/utils/aiService";
-import { getPlaceDetails } from "@/utils/places";
+import { getGroundedSuggestions } from "@/utils/aiService";
+import SuggestionReasoningPanel from "@/components/SuggestionReasoningPanel";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [originQuery, setOriginQuery] = useState("");
@@ -36,6 +36,7 @@ const Index = () => {
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
   const [isLoadingNLSuggestions, setIsLoadingNLSuggestions] = useState(false);
+  const [groundedSuggestions, setGroundedSuggestions] = useState<Array<{ name: string; placeId?: string }>>([]);
   // From search (no bias)
   const {
     results: fromResults,
@@ -124,41 +125,55 @@ const Index = () => {
       setToResults([]);
       setIsLoadingNLSuggestions(true);
       try {
-        // Parse intent (uses existing provider; will also raise AI key dialog if needed)
-        await parseIntent(destinationQuery);
-
         const provider = apiKeyManager.getAIProvider();
         const aiKey = apiKeyManager.getAIKey();
         if (provider !== 'gemini' || !aiKey) {
           setNeedsAIKey(true);
           await searchTo(destinationQuery); // fallback
+          // Cap to 3 in NL mode for consistency
+          setToResults((prev) => prev.slice(0, 3));
           return;
         }
 
-        const suggestions = await suggestDestinationsGrounded(
+        const suggestions = await getGroundedSuggestions(
           destinationQuery,
           { latitude: originCoords.lat, longitude: originCoords.lng },
-          5
+          3
         );
+
+        setGroundedSuggestions(suggestions || []);
 
         if (!suggestions || suggestions.length === 0) {
           await searchTo(destinationQuery); // fallback
+          // Cap to 3 in NL mode for consistency
+          setToResults((prev) => prev.slice(0, 3));
           return;
         }
+        await searchTo(destinationQuery);
 
-        const details = await Promise.all(
-          suggestions.map((s) => (s.placeId ? getPlaceDetails(s.placeId) : Promise.resolve(null)))
-        );
-        const results = details.filter((d): d is NonNullable<typeof d> => !!d);
+        // After searchTo completes, reorder/filter current results to align with Gemini suggestions
+        const idRank = new Map<string, number>();
+        suggestions.forEach((s, i) => {
+          if (s.placeId) idRank.set(s.placeId, i);
+        });
 
-        if (results.length === 0) {
-          await searchTo(destinationQuery); // fallback
-          return;
-        }
-
-        setToResults(results);
+        setToResults((prev) => {
+          const filtered = prev.filter((r) => idRank.has(r.id));
+          const finalList = (filtered.length ? filtered : prev).slice();
+          finalList.sort((a, b) => {
+            const aiA = idRank.get(a.id);
+            const aiB = idRank.get(b.id);
+            if (aiA == null && aiB == null) return 0;
+            if (aiA == null) return 1;
+            if (aiB == null) return -1;
+            return aiA - aiB;
+          });
+          return finalList.slice(0, 3);
+        });
       } catch (e) {
         await searchTo(destinationQuery); // fallback on error
+        // Cap to 3 in NL mode for consistency
+        setToResults((prev) => prev.slice(0, 3));
       } finally {
         setIsLoadingNLSuggestions(false);
       }
@@ -190,6 +205,7 @@ const Index = () => {
     if (intent) {
       clearIntent();
     }
+    setGroundedSuggestions([]);
   };
   const handleResultSelect = (result: SearchResult, list: 'from' | 'to') => {
     if (list === 'from') {
@@ -327,6 +343,43 @@ const Index = () => {
           <>
             {/* From results moved above via fromResultsArea */}
             {/* To results */}
+            {naturalLanguageMode && toResults.length > 0 && groundedSuggestions.length > 0 && (
+              <div className="mt-6">
+                <SuggestionReasoningPanel
+                  suggestions={groundedSuggestions}
+                  origin={originCoords}
+                  onApplyReasons={(reasonsById, reasonsByName) => {
+                    const norm = (s: string) => s.trim().toLowerCase();
+                    const hasAIReasons = Object.keys(reasonsById).length > 0 || Object.keys(reasonsByName).length > 0;
+                    setToResults((prev) => {
+                      if (hasAIReasons) {
+                        return prev.map((r) => ({
+                          ...r,
+                          reason: reasonsById[r.id] || reasonsByName[norm(r.name)] || r.reason,
+                        }));
+                      }
+                      // Fallback heuristic reasons if AI returned none
+                      return prev.map((r) => {
+                        const parts: string[] = [];
+                        if (typeof r.rating === 'number') {
+                          const stars = `${r.rating.toFixed(1)}★`;
+                          const count = typeof r.userRatingCount === 'number' ? r.userRatingCount : undefined;
+                          const countLabel = count != null ? (count >= 1000 ? `${Math.round(count / 100) / 10}k` : `${count}`) : undefined;
+                          parts.push(countLabel ? `${stars} · ${countLabel} reviews` : stars);
+                        }
+                        if (r.distance !== undefined) {
+                          parts.push(`~${r.distance.toFixed(1)} km away`);
+                        }
+                        if (parts.length === 0) {
+                          parts.push('Matches your query');
+                        }
+                        return { ...r, reason: parts.join(' · ') };
+                      });
+                    });
+                  }}
+                />
+              </div>
+            )}
             {(toResults.length > 0 || (naturalLanguageMode && isLoadingNLSuggestions)) && (
               <SearchResults
                 title="Choose a destination"

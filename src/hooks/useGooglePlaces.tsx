@@ -68,7 +68,7 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': mapsKey,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount',
         },
         body: JSON.stringify(body),
         signal,
@@ -97,6 +97,8 @@ export const useGooglePlaces = (currentLocation: GeolocationCoordinates | null) 
           id,
           name,
           address: p.formattedAddress || '',
+          rating: typeof p.rating === 'number' ? p.rating : undefined,
+          userRatingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : undefined,
           location: { lat, lng },
           distance: currentLocation
             ? calculateDistance(
