@@ -53,7 +53,7 @@ const OriginDestinationForm = ({
               className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group"
             >
               <Sparkles className={`h-4 w-4 transition-colors ${naturalLanguageMode ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span>Natural Language</span>
+              <span>Search with AI</span>
             </button>
           )}
         </div>
@@ -111,7 +111,7 @@ const OriginDestinationForm = ({
           <div className="relative flex-1">
             <Input
               type="text"
-              placeholder={naturalLanguageMode ? 'Try "Get me to Central Park safely"' : 'Where to?'}
+              placeholder={naturalLanguageMode ? 'Search with AI: Try "Get me to Central Park safely"' : 'Where to?'}
               value={toQuery}
               onChange={(e) => onChangeTo(e.target.value)}
               disabled={isParsingIntent}

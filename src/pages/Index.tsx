@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { SearchResult } from "@/types/location";
-import SearchBar from "@/components/SearchBar";
 import OriginDestinationForm from "@/components/OriginDestinationForm";
 import logo from "@/assets/logo.png";
 import ErrorAlert from "@/components/ErrorAlert";
@@ -9,17 +8,14 @@ import RouteResults from "@/components/RouteResults";
 import RouteDetailsView from "@/components/route-details/RouteDetailsView";
 import MethodologyDrawer from "@/components/MethodologyDrawer";
 import ApiKeyInput from "@/components/ApiKeyInput";
-import AIKeyDialog from "@/components/AIKeyDialog";
-import IntentDisplay from "@/components/IntentDisplay";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getCurrentPosition } from "@/utils/location";
 import { LocationError } from "@/types/location";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useRouteCalculation } from "@/hooks/useRouteCalculation";
-import { useNaturalLanguageSearch } from "@/hooks/useNaturalLanguageSearch";
 import { apiKeyManager } from "@/utils/apiKeyManager";
-import { getGroundedSuggestions } from "@/utils/aiService";
-import SuggestionReasoningPanel from "@/components/SuggestionReasoningPanel";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [originQuery, setOriginQuery] = useState("");
@@ -32,11 +28,8 @@ const Index = () => {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [currentSearch, setCurrentSearch] = useState<SearchResult | null>(null);
   const [mapsApiKey, setMapsApiKey] = useState<string | null>(null);
-  const [naturalLanguageMode, setNaturalLanguageMode] = useState(false);
   const [processedLogo, setProcessedLogo] = useState<string>(logo);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
-  const [isLoadingNLSuggestions, setIsLoadingNLSuggestions] = useState(false);
-  const [groundedSuggestions, setGroundedSuggestions] = useState<Array<{ name: string; placeId?: string }>>([]);
   // From search (no bias)
   const {
     results: fromResults,
@@ -59,14 +52,7 @@ const Index = () => {
     setRoutes,
     setSelectedResult
   } = useRouteCalculation();
-  const {
-    parseIntent,
-    clearIntent,
-    isParsingIntent,
-    intent,
-    needsAIKey,
-    setNeedsAIKey
-  } = useNaturalLanguageSearch();
+  
   useEffect(() => {
     if (apiKey) {
       const keyToUse = apiKey;
@@ -117,73 +103,11 @@ const Index = () => {
 
   const handleSearchToSubmit = async () => {
     if (!destinationQuery.trim()) return;
-    if (naturalLanguageMode) {
-      if (!originCoords) {
-        setError({ title: "Pick a start", message: "Set From (or use your location) first." });
-        return;
-      }
-      setToResults([]);
-      setIsLoadingNLSuggestions(true);
-      try {
-        const provider = apiKeyManager.getAIProvider();
-        const aiKey = apiKeyManager.getAIKey();
-        if (provider !== 'gemini' || !aiKey) {
-          setNeedsAIKey(true);
-          await searchTo(destinationQuery); // fallback
-          // Cap to 3 in NL mode for consistency
-          setToResults((prev) => prev.slice(0, 3));
-          return;
-        }
-
-        const suggestions = await getGroundedSuggestions(
-          destinationQuery,
-          { latitude: originCoords.lat, longitude: originCoords.lng },
-          3
-        );
-
-        setGroundedSuggestions(suggestions || []);
-
-        if (!suggestions || suggestions.length === 0) {
-          await searchTo(destinationQuery); // fallback
-          // Cap to 3 in NL mode for consistency
-          setToResults((prev) => prev.slice(0, 3));
-          return;
-        }
-        await searchTo(destinationQuery);
-
-        // After searchTo completes, reorder/filter current results to align with Gemini suggestions
-        const idRank = new Map<string, number>();
-        suggestions.forEach((s, i) => {
-          if (s.placeId) idRank.set(s.placeId, i);
-        });
-
-        setToResults((prev) => {
-          const filtered = prev.filter((r) => idRank.has(r.id));
-          const finalList = (filtered.length ? filtered : prev).slice();
-          finalList.sort((a, b) => {
-            const aiA = idRank.get(a.id);
-            const aiB = idRank.get(b.id);
-            if (aiA == null && aiB == null) return 0;
-            if (aiA == null) return 1;
-            if (aiB == null) return -1;
-            return aiA - aiB;
-          });
-          return finalList.slice(0, 3);
-        });
-      } catch (e) {
-        await searchTo(destinationQuery); // fallback on error
-        // Cap to 3 in NL mode for consistency
-        setToResults((prev) => prev.slice(0, 3));
-      } finally {
-        setIsLoadingNLSuggestions(false);
-      }
-    } else {
-      if (!originCoords) {
-        setError({ title: "Pick a start", message: "Set From (or use your location) first." });
-        return;
-      }
-      await searchTo(destinationQuery);
+    if (!originCoords) {
+      setError({ title: "Pick a start", message: "Set From (or use your location) first." });
+      return;
     }
+    await searchTo(destinationQuery);
   };
   const handleResetSearch = () => {
     // Clear all search-related state
@@ -198,15 +122,9 @@ const Index = () => {
     setSelectedResult(null);
     setRoutes([]);
     setAbortController(null);
-    clearIntent();
+    // no-op
   };
-  const handleToggleNaturalLanguage = () => {
-    setNaturalLanguageMode(!naturalLanguageMode);
-    if (intent) {
-      clearIntent();
-    }
-    setGroundedSuggestions([]);
-  };
+  const handleToggleNaturalLanguage = () => {};
   const handleResultSelect = (result: SearchResult, list: 'from' | 'to') => {
     if (list === 'from') {
       setOriginQuery(result.name);
@@ -232,9 +150,7 @@ const Index = () => {
     }
   };
   
-  const handleAIKeySuccess = () => {
-    setNeedsAIKey(false);
-  };
+  // no AI key in normal mode
   useEffect(() => {
     return () => {
       if (abortController) {
@@ -277,6 +193,14 @@ const Index = () => {
           </div>
         </div>
         
+        <div className="flex justify-end mb-4">
+          <Link to="/ai">
+            <Button className="rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500 text-white shadow-aero hover:shadow-glow">
+              Search with AI
+            </Button>
+          </Link>
+        </div>
+
         <OriginDestinationForm
           fromQuery={originQuery}
           onChangeFrom={setOriginQuery}
@@ -322,14 +246,8 @@ const Index = () => {
             setDestinationQuery("");
             setToResults([]);
           }}
-          naturalLanguageMode={naturalLanguageMode}
-          onToggleNaturalLanguage={handleToggleNaturalLanguage}
-          isParsingIntent={isParsingIntent}
         />
 
-        {intent && <div className="mt-4">
-            <IntentDisplay intent={intent} onDismiss={clearIntent} />
-          </div>}
 
         {selectedResult && routes.length > 0 ? (
           <RouteResults
@@ -343,48 +261,11 @@ const Index = () => {
           <>
             {/* From results moved above via fromResultsArea */}
             {/* To results */}
-            {naturalLanguageMode && toResults.length > 0 && groundedSuggestions.length > 0 && (
-              <div className="mt-6">
-                <SuggestionReasoningPanel
-                  suggestions={groundedSuggestions}
-                  origin={originCoords}
-                  onApplyReasons={(reasonsById, reasonsByName) => {
-                    const norm = (s: string) => s.trim().toLowerCase();
-                    const hasAIReasons = Object.keys(reasonsById).length > 0 || Object.keys(reasonsByName).length > 0;
-                    setToResults((prev) => {
-                      if (hasAIReasons) {
-                        return prev.map((r) => ({
-                          ...r,
-                          reason: reasonsById[r.id] || reasonsByName[norm(r.name)] || r.reason,
-                        }));
-                      }
-                      // Fallback heuristic reasons if AI returned none
-                      return prev.map((r) => {
-                        const parts: string[] = [];
-                        if (typeof r.rating === 'number') {
-                          const stars = `${r.rating.toFixed(1)}★`;
-                          const count = typeof r.userRatingCount === 'number' ? r.userRatingCount : undefined;
-                          const countLabel = count != null ? (count >= 1000 ? `${Math.round(count / 100) / 10}k` : `${count}`) : undefined;
-                          parts.push(countLabel ? `${stars} · ${countLabel} reviews` : stars);
-                        }
-                        if (r.distance !== undefined) {
-                          parts.push(`~${r.distance.toFixed(1)} km away`);
-                        }
-                        if (parts.length === 0) {
-                          parts.push('Matches your query');
-                        }
-                        return { ...r, reason: parts.join(' · ') };
-                      });
-                    });
-                  }}
-                />
-              </div>
-            )}
-            {(toResults.length > 0 || (naturalLanguageMode && isLoadingNLSuggestions)) && (
+            {toResults.length > 0 && (
               <SearchResults
                 title="Choose a destination"
                 results={toResults}
-                isLoading={naturalLanguageMode ? isLoadingNLSuggestions : isLoadingTo}
+                isLoading={isLoadingTo}
                 onResultSelect={(r) => handleResultSelect(r, 'to')}
                 onNewSearch={() => setToResults([])}
                 currentSelection={currentSearch}
@@ -395,13 +276,7 @@ const Index = () => {
 
         <ErrorAlert isOpen={error !== null} title={error?.title || "Error"} message={error?.message || "An error occurred"} onClose={() => setError(null)} />
 
-        <AIKeyDialog 
-          isOpen={needsAIKey} 
-          onClose={() => setNeedsAIKey(false)}
-          onSuccess={handleAIKeySuccess}
-        />
-
-        {selectedRoute && <RouteDetailsView isOpen={isRouteDetailsOpen} onClose={() => setIsRouteDetailsOpen(false)} originalRoute={selectedRoute} intent={intent} />}
+        {selectedRoute && <RouteDetailsView isOpen={isRouteDetailsOpen} onClose={() => setIsRouteDetailsOpen(false)} originalRoute={selectedRoute} />}
         <MethodologyDrawer open={isMethodologyOpen} onOpenChange={setIsMethodologyOpen} />
       </div>
     </div>;

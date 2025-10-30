@@ -34,7 +34,7 @@ const SearchBar = ({
   };
 
   const effectivePlaceholder = naturalLanguageMode 
-    ? 'Try "Get me to Central Park safely" or "Fastest route to Brooklyn Bridge"'
+    ? 'Search with AI: Try "Get me to Central Park safely"'
     : placeholder;
 
   return (
@@ -47,7 +47,7 @@ const SearchBar = ({
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
           >
             <Sparkles className={`h-4 w-4 transition-colors ${naturalLanguageMode ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span>Natural Language Mode</span>
+            <span>Search with AI</span>
             {naturalLanguageMode && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 AI Enabled
